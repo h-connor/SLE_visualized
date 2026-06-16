@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+
+  <head>
+    <title>Network</title>
+
+    <!--  Import scripts -->
+    <script
+      type="text/javascript"
+      src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"
+    ></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+
+    <!-- Styles -->
+    <style type="text/css">
+    
+      #network_body {
+        width: 80vw;
+        height: 100vh;
+        border-right: 2px solid black;
+      }
+
+      #graph {
+        width: 80vw;
+        height: 100vh;
+      }
+
+      .cluster {
+        border solid 1 black;
+      }
+
+      .net {
+        width: 80vw;
+        height: 170px;
+        border-right: 2px solid black;
+        z-index: 1;
+      }
+
+      .patInfo {
+        width: 30vw;
+        height: 50px;
+
+        margin-left: 23vw;
+        z-index: -1;
+        
+        position: fixed;
+        pointer-events: none;
+        display: none;
+
+        /* Styling */
+        background: linear-gradient(
+            180deg,
+            #3a3a3a 0%,
+            #2d2d2d 100%
+        );
+
+        color: #f5f5f5;
+        padding: 16px 20px;
+        border-radius: 14px;
+        border: 1px solid rgba(255,255,255,0.08);
+        box-shadow:
+            0 8px 24px rgba(0,0,0,0.35),
+            0 2px 6px rgba(0,0,0,0.2);
+
+        font-family:
+            Inter,
+            "Segoe UI",
+            system-ui,
+            sans-serif;
+
+        font-size: 14px;
+        line-height: 1.5;
+        backdrop-filter: blur(8px);
+      }
+
+      .network-info {
+          display: flex;
+          align-items: center;
+          gap: 16px;
+      }
+
+      .network-stats {
+          display: flex;
+          flex-direction: row;
+          justify-content: space-between;
+          align-items: center;
+
+          width: 100%;
+          white-space: nowrap;   /* prevents breaking */
+          flex-wrap: nowrap;     /* forces single line */
+      }
+
+      .group {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          white-space: nowrap;
+      }
+
+      .group.left {
+          justify-content: flex-start;
+          margin-left: 3vw;
+          margin-bottom: 39px;
+      }
+
+      .group.right {
+          justify-content: flex-end;
+          margin-right: 0vw;
+          margin-bottom: 39px;
+      }
+
+      .network-stats * {
+          flex-shrink: 0; /* prevents weird squeezing/wrapping */
+      }
+
+      #app {
+        position: relative;
+        width: 100%;
+        height: 100%;
+      }
+
+      .userPanel {
+        width: 19vw; /* NOTE: Re-adjust if shifting the network width */
+        height: 100vh;    /* full screen height */
+        position: fixed;
+        right: 0;
+        top: 0;
+
+        background: #2f2f2f;
+        color: #e6e6e6;
+        padding: 16px;
+        border-radius: 10px;
+        border: 1px solid #3f3f3f;
+        box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
+        font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      }
+
+      .panelTitle {
+        margin: 0 0 12px 0;
+        font-size: 14px;
+        font-weight: 600;
+        color: #f0f0f0;
+        letter-spacing: 0.5px;
+      }
+
+      .sectionLabel {
+        margin: 14px 0 6px;
+        font-size: 12px;
+        color: #aaaaaa;
+        text-transform: uppercase;
+        letter-spacing: 0.8px;
+      }
+
+      .optionRow {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 8px;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: background 0.15s ease;
+      }
+
+      .optionRow:hover {
+        background: #3a3a3a;
+      }
+
+      .optionRow input {
+        accent-color: #7aa2ff;
+        transform: scale(1.05);
+      }
+
+      .dropdown {
+        width: 100%;
+        padding: 8px 10px;
+
+        background: #3a3a3a;
+        color: #e6e6e6;
+
+        border: 1px solid #4a4a4a;
+        border-radius: 8px;
+
+        font-size: 13px;
+
+        outline: none;
+        cursor: pointer;
+
+        appearance: none;
+        -webkit-appearance: none;
+        -moz-appearance: none;
+
+        transition: background 0.15s ease, border 0.15s ease;
+      }
+
+      .dropdown:hover {
+        background: #444;
+        border-color: #5a5a5a;
+      }
+
+      .dropdown:focus {
+        border-color: #7aa2ff;
+        box-shadow: 0 0 0 2px rgba(122, 162, 255, 0.2);
+      }
+
+      .menuSection {
+        position: relative;
+      }
+
+      .menuSection::after {
+        content: "▾";
+        position: absolute;
+        right: 12px;
+        top: 34px;
+        color: #aaa;
+        pointer-events: none;
+      }
+    </style>
+  </head>
+
+  <!-- Page -->
+  <body>
+    <div id='graph'>
+      <div id='network_body'></div> <!-- Network contained in this div (dynamic) -->
+      <div class="userPanel">  <!-- Filters, sorting, stuff for the user to modify --->
+
+        <h3 class="panelTitle">Options</h3>
+        <label class="optionRow">
+          <input type="checkbox" id="clustering">
+          <span>Enable clustering</span>
+        </label>
+
+        <div class="sectionLabel">Sorting</div>
+        <label class="optionRow">
+          <input type="radio" name="sorting" value="desc" checked="checked">
+          <span>Descending</span>
+        </label>
+
+        <label class="optionRow">
+          <input type="radio" name="sorting" value="asc">
+          <span>Ascending</span>
+        </label>
+
+        <div class="menuSection">
+          <div class="sectionLabel">Sort Method</div>
+            <select id="sortMethod" class="dropdown">
+              <option value="length">Length / Default</option>
+              <option value="frequency">SLE Frequency</option>
+              <option value="odds_ratio">Odds Ratio</option>
+              <option value="growth_rate">Growth Rate</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Button listensers --->
+        <script type="module">
+        import { SORT_TYPE, build_network } from './docs/network.js'
+
+        var sort_type = SORT_TYPE.LENGTH // default
+        var desc = true; // Default
+
+
+        // Radio buttons: Sorting order
+        document.querySelectorAll('input[name="sorting"]').forEach((radio) => {
+            radio.addEventListener("change", function (e) {
+
+                if (e.target.value === "asc") {
+                  desc = false;
+                }
+                else {
+                  desc = true;
+                }
+
+                // Sort in ascend or descending order
+                build_network(sort_type, desc);
+            });
+        });
+
+
+        // Drop down menu for sorting
+        document.getElementById("sortMethod").addEventListener("change", function (e) {
+            const value = e.target.value;
+
+            if (value === "length") sort_type = SORT_TYPE.LENGTH;
+            else if (value === "frequency") sort_type = SORT_TYPE.FREQ;
+            else if (value === "odds_ratio") sort_type = SORT_TYPE.ODDS;
+            else if (value === "growth_rate") sort_type = SORT_TYPE.growth;
+
+            build_network(sort_type, desc);
+        });
+        </script>
+
+    </div>
+  </body>
+</html>

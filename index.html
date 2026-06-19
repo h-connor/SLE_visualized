@@ -25,6 +25,45 @@
         height: 100vh;
       }
 
+      #color {
+        position: fixed;
+        right: 9vw;
+        top: 35vw;
+      }
+
+      #color-scheme {
+        width: 30px;
+        height: 300px;
+        background: linear-gradient(
+            to top,
+            rgb(173,216,230) 0%,
+            rgb(0,102,204) 33%,
+            rgb(0,180,75) 66%,
+            rgb(220,50,50) 100%
+        );
+        z-index:1;
+      }
+
+      #color-values {
+        position: absolute;
+        display: flex; 
+        flex-direction: column;
+        justify-content:space-between;
+        width: 30px;
+        height: 300px;
+        right: 20px;
+        bottom: 0px;
+        color: cyan;
+      }
+
+      #Growth-rate {
+        position: absolute;
+        top: -30px;
+        width: 90px;
+        right: -30px;
+        color: cyan;
+      }
+
       .cluster {
         border solid 1 black;
       }
@@ -107,10 +146,6 @@
           justify-content: flex-end;
           margin-right: 0vw;
           margin-bottom: 39px;
-      }
-
-      .network-stats * {
-          flex-shrink: 0; /* prevents weird squeezing/wrapping */
       }
 
       #app {
@@ -221,6 +256,7 @@
   <body>
     <div id='graph'>
       <div id='network_body'></div> <!-- Network contained in this div (dynamic) -->
+      
       <div class="userPanel">  <!-- Filters, sorting, stuff for the user to modify --->
 
         <h3 class="panelTitle">Options</h3>
@@ -289,6 +325,16 @@
         });
         </script>
 
+        <div id='color'>
+          <div id='color-scheme'></div>
+          <span id='Growth-rate'>Growth Rate</span>
+          <div id='color-values'>
+              <span>6+</span>
+              <span>3</span>
+              <span>2</span>
+              <span>1</span>
+          </div>
+        </div>
     </div>
   </body>
 </html>

@@ -16,13 +16,61 @@ class SequenceItem {
     this.value = (value in category_shortener) ? category_shortener[value] : value;
     this.window = window;
   }
+
+  toString(){
+    return this.value;
+  }
+
+  [Symbol.for("nodejs.util.inspect.custom")]() {
+    return this.toString();
+  }
 }
 
 class SequenceItemset {
   constructor(items) {
     this.items = items;
     this.window = items[0].window
-}
+  }
+
+  get_item(indx){
+    return this.items[indx];
+  }
+
+  toString(){
+    var ret = "";
+
+    for (var item of this.items)
+      ret += item.toString();
+
+    return ret;
+  }
+
+[Symbol.for("nodejs.util.inspect.custom")]() {
+    return this.toString();
+  }  
+
+
+  Equals(other){
+    var ret = this.items.length == other.items.length & this.window == other.window
+
+    if (ret)
+    {
+      // Compare if the itemsets are equal
+      for (var i = 0; i < this.items.length; i++)
+      {
+        const this_i = this.items[i]
+        const oth_i = other.items[i]
+
+        if (this_i.value != oth_i.value) {
+          ret = false;
+          break
+        }
+      }
+
+    }
+
+    return ret
+  }
 
   name_str() {
     const res = [];
@@ -35,13 +83,66 @@ class SequenceItemset {
 
 export class Sequence {
   constructor(itemsets, num_p, med_diag) {
-    this.length = itemsets.length
+    this.length = itemsets.length;
     this.itemsets = itemsets;
     this.num_patients = num_p;
     this.median_diag_dist = med_diag;
-    this.p_value = 0; // TODO: Calculate P-value here
-    this.odds_ratio = getRatiosForSeq(this)
-    this.growth_rate = getGR(this)
+    this.odds_ratio = getRatiosForSeq(this);
+    this.growth_rate = getGR(this);
+    this.subset_link = null;
+    this.super_set_links = [];
+    this.upper_level = true;
+  }
+
+  get_subset_by_seq_indx(indx) {
+    /* given an index, get the subset of the sequence at that index (if available) 
+       
+       If none is found, simply return this sequence instead.
+
+       For example, given A -> B -> C
+       A -> B is indx of 1
+       A is indx of 0
+       A -> B -> C is indx of 2
+    */
+    
+    var cur_seq = this;
+    var cur_indx = this.length - 1;
+    while (cur_indx >= 0 & cur_seq !== null)
+    {
+       if (indx == cur_indx)
+          return cur_seq;
+
+       cur_indx--;
+       cur_seq = this.subset_link;
+    }
+
+    return this;
+  }
+
+  get_item(indx){
+    return this.itemsets[indx];
+  }
+
+  toString(){
+    // To string this object
+    var ret = "";
+
+    for (var item of this.itemsets)
+      ret += '\{' + item.toString() + '\} ';
+
+    return ret;
+  }
+
+  [Symbol.for("nodejs.util.inspect.custom")]() {
+    return this.toString();
+  }
+
+  get_lower_level_by_indx(indx) {
+    /*
+        Return the sequence from subset_links that is relative to the given index
+        For example, given A -> B -> C
+          Return A if indx is 0, A -> B if indx is 1, etc..
+    */
   }
 
 
@@ -157,7 +258,102 @@ function get_freq_str(str_freq) {
 export function windowToTimelineMonths(window) {
   const start = window * 6;
   const end = start + 6;
-  return `${start}-${end}M`;
+  return `${start}-${end}`;
+}
+
+function is_immed_ordered_subset(p_sup, p_sub) {
+    /*
+        Returns true if potential_sup is a immediate subset of potential_sub, regardless of order
+
+        For example, A -> C is a subset of A -> C -> B
+    */
+
+    // Subset must be exactly 1 itemset smaller than the superset
+    if (p_sup.length != p_sub.length + 1) return false;
+
+    var num_matches = 0;
+    var num_trials = p_sub.length;
+    for (var i = 0; i < num_trials; i++) { // Go through each subset itemset
+        var sub_itemset = p_sub.get_item(num_matches);
+
+        var found_match = false;
+        var itemsetSup = p_sup.get_item(i);
+
+        if (itemsetSup.Equals(sub_itemset)) {
+            found_match = true;
+            num_matches = num_matches + 1;
+          }
+
+        if (!found_match) return false;
+    }
+      
+  return num_matches === num_trials
+}
+
+function get_maximal_seqs(seqs) {
+  // Return the maximal sequences and assign references to the subsets for each sequence
+
+  // Put together the maximal sequences
+  // First, setup a dictionary relative to the lengths
+  const length_dict = new Map();
+  var lengths_sorted = new Set();
+
+  for (var seq of seqs) {
+    if (seq.length in length_dict) length_dict[seq.length].push(seq);
+    else length_dict[seq.length] = [seq];
+
+    lengths_sorted.add(seq.length);
+  }
+
+  lengths_sorted = Array.from(lengths_sorted).sort();
+  lengths_sorted.reverse();
+  
+  // Now, go through each sequence in reverse order of the lengths
+  // Check the previous length for any immediate supersets
+  var prev_len = null;
+  var first_len = null;
+  for (var cur_len of lengths_sorted)
+  {
+    // Initial start, no previous length 
+    if (prev_len === null) {
+      prev_len = cur_len;
+      first_len = prev_len;
+      continue;
+    }
+
+    // For each sequence of this length, check if we have anything in the 'upper level'
+    // If we do, assign it as a subset
+    var cur_len_sequences = length_dict[cur_len];
+    for (var cur_seq of cur_len_sequences)
+    {
+      
+      for (var pot_upper of length_dict[prev_len])
+      {
+          if (is_immed_ordered_subset(pot_upper, cur_seq))
+          {
+            if (pot_upper.subset_link !== null) throw new Error ("Null expected.");
+
+            // Found a superset
+            pot_upper.subset_link = cur_seq;
+            cur_seq.upper_level = false;
+            cur_seq.super_set_links.push(cur_seq);
+            break;
+          }
+      }
+    }
+
+    prev_len = cur_len;
+  }
+
+  // Go through all sequences and take only upper levels
+  const maximal_seqs = []
+  for (var seq of seqs)
+  {
+    if (seq.upper_level)
+      maximal_seqs.push(seq)
+  }
+
+  return maximal_seqs
 }
 
 // Build all Sequence objects from file
@@ -181,5 +377,6 @@ export function build_objs(pattern_raw) {
         seqs.push(new Sequence(seq, freq, med_dates));
     }
 
-    return seqs;
+    const maximal_seqs = get_maximal_seqs(seqs)
+    return maximal_seqs;
 }

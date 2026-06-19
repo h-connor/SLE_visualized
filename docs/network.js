@@ -5,6 +5,7 @@ var clickedInsideNetwork = false;
 
 var networks = [];
 var network_containers = [];
+var node_to_seq = new Map();
 
 // Creating insert
 Array.prototype.insert = function ( index, ...items ) {
@@ -22,12 +23,14 @@ function getFontSize(label) {
     // Get font size relative to a labels text length
 
     const len = label.length;
-    if (len < 5) return 24;
-    if (len < 10) return 22;
-    if (len < 15) return 18;
-    if (len < 20) return 17;
-    if (len < 25) return 15;
-    if (len < 40) return 14;
+    const NUM_WORDS_FACTOR = Math.max(6 - (label.split("\n").length * 2), 0)
+    
+    if (len < 5) return 23 - NUM_WORDS_FACTOR;
+    if (len < 10) return 21 - NUM_WORDS_FACTOR;
+    if (len < 15) return 17 - NUM_WORDS_FACTOR;
+    if (len < 20) return 16 - NUM_WORDS_FACTOR;
+    if (len < 25) return 15 - NUM_WORDS_FACTOR;
+    if (len < 40) return 14 - NUM_WORDS_FACTOR;
 
     return 12;
 }
@@ -86,7 +89,6 @@ function sort_sequences(sequences, sort_method) {
             n_sequences.push(cur_seq)
     }
 
-    console.log(n_sequences.length)
     return n_sequences
 }
 
@@ -103,8 +105,109 @@ function clear_net(){
     revealedNodes.clear();
     networks.length = 0
     network_containers.length = 0;
+    node_to_seq = new Map();
 }
 
+const COLORS = {
+    low:  [173, 216, 230], // 1 = light blue
+    mid:  [0, 102, 204],   // 2 = blue
+    good: [0, 180, 75],    // 3 = green
+    high: [220, 50, 50]    // >3 = red
+};
+
+function lerp(a, b, t) {
+    return a + (b - a) * t;
+}
+
+function lerpColor(c1, c2, t) {
+    return `rgb(${
+        Math.round(lerp(c1[0], c2[0], t))
+    }, ${
+        Math.round(lerp(c1[1], c2[1], t))
+    }, ${
+        Math.round(lerp(c1[2], c2[2], t))
+    })`;
+}
+
+function valueToColor(value) {
+    if (value <= 2) {
+        return lerpColor(COLORS.low, COLORS.mid, value - 1);
+    }
+
+    if (value <= 3) {
+        return lerpColor(COLORS.mid, COLORS.good, value - 2);
+    }
+
+    // Saturates at 6
+    const t = Math.min(1, (value - 3) / 3);
+    return lerpColor(COLORS.good, COLORS.high, t);
+}
+
+function getFutureNodes(startNode, network) {
+    const visited = new Set();
+
+    function traverse(nodeId) {
+        const connectedEdges = network.getConnectedEdges(nodeId);
+
+        for (const edgeId of connectedEdges) {
+            const edge = network.body.data.edges.get(edgeId);
+
+            // only follow outgoing edges
+            if (edge.from === nodeId) {
+                if (!visited.has(edge.to)) {
+                    visited.add(edge.to);
+                    traverse(edge.to);
+                }
+            }
+        }
+    }
+
+    traverse(startNode);
+    return Array.from(visited);
+}
+
+function collapseNode(nodeId, network) {
+    const nodesToCollapse = getFutureNodes(nodeId, network);
+    nodesToCollapse.push(nodeId);
+
+    if (nodesToCollapse.length === 0) {
+        return;
+    }
+
+    network.cluster({
+        joinCondition: function(nodeOptions) {
+            return nodesToCollapse.includes(nodeOptions.id);
+        },
+        clusterNodeProperties: {
+            id: "cluster_" + nodeId,
+            label: "Collapsed (" + nodesToCollapse.length + ")",
+            shape: "box",
+            hidden: true,
+            selectable: false,
+            chosen: false
+        }
+    });
+}
+
+function expandNode(nodeId, network) {
+    const clusterId = "cluster_" + nodeId;
+
+    if (network.isCluster(clusterId)) {
+        network.openCluster(clusterId);
+    }
+}
+
+function darkenRGB(rgb, amount = 0.2) {
+    // Given an rgb value (as string), return the darkened color by a fixed amount
+
+    const factor = 1 - amount;
+
+    const values = rgb.match(/\d+/g).map(Number);
+
+    const darker = values.map(c => Math.round(c * factor));
+
+    return `rgb(${darker.join(", ")})`;
+}
 export function build_network(sort_method, desc=true) 
 {
     // Clear previous network (if any)
@@ -113,7 +216,6 @@ export function build_network(sort_method, desc=true)
     // Pyscript: Build the sequences
     var sequences = build_objs(pattern_raw);
     sequences = sort_sequences(sequences, sort_method)
-    console.log(sequences[0].length)
 
     if (!desc) sequences.reverse();
 
@@ -127,11 +229,11 @@ export function build_network(sort_method, desc=true)
 
     var network_options = {
         layout: {
-            hierarchical: { 
-                enabled: true, 
-                direction: "LR",
-                levelSeparation: 200
-            }
+            improvedLayout: false,
+            
+            hierarchical: {
+                enabled: false
+            },
         },
         physics: {
             enabled: false
@@ -140,8 +242,8 @@ export function build_network(sort_method, desc=true)
         nodes: {
             shape: 'box',
             margin: 3,
-            size:25,
-            widthConstraint: 95,
+            size:40,
+            widthConstraint: 70,
             heightConstraint: 65,
             font: {
                 size: 18,
@@ -151,7 +253,6 @@ export function build_network(sort_method, desc=true)
     };
 
     for(let seq of sequences){
-        console.log(seq)
         var node_names = [];
         var edges = [];
 
@@ -159,16 +260,50 @@ export function build_network(sort_method, desc=true)
         // Edge: 1st itemset -> next -> until end of sequence
         // Node: Itemset
         var first_n = true;
-        var prev_id = -1
-        
-        for (let itemset of seq){
-            var label_text = itemset.name_str()
+        var prev_id = -1;
+        var cur_itemset_pos = 0;
+        const width80 = window.innerWidth * 0.8;
+        const EDGE_XFACTOR = 5;
+        const NO_WIND_RED = 60;
+        const DEF_NEXT_ITEMSET_DIST = 170;
+        const INIT_POS = (-window.innerWidth / 2) + (72 * 2);
 
+        const RESCALE_AT_LEN = 6 // TODO: Rescale doesnt work with smaller sequences
+        var prev_xpos = 0;
+
+        for (let itemset of seq) {
+            // The subset that this position in the sequence refers to (if available)
+            var subset_seq = seq.get_subset_by_seq_indx(cur_itemset_pos);
+            node_to_seq.set(cur_node_id, subset_seq); // Track node -> seq
+
+            // Amount to shift a node by to make the edge longer
+            // Scale the smaller sequences by a larger amount (as we have more room)
+            var edge_shift = (((seq.len < RESCALE_AT_LEN) ? EDGE_XFACTOR * 2 : EDGE_XFACTOR) * itemset.window) - NO_WIND_RED;
+            var label_text = itemset.name_str();
+
+            if (cur_itemset_pos == 0)
+                var n_xpos = INIT_POS;
+            else
+                var n_xpos = prev_xpos + edge_shift + DEF_NEXT_ITEMSET_DIST;
+
+            const gr_color = valueToColor(subset_seq.growth_rate);
             node_names.push( 
                 {   // Properties of a node 
                     id: cur_node_id, label: label_text,
                     font: {
                         size: getFontSize(label_text)
+                    },
+                    x: n_xpos,
+                    y: 65,
+
+                    fixed: {
+                        x: true,
+                        y: true
+                    },
+
+                    color: {
+                        background: gr_color,
+                        border: darkenRGB(gr_color, 0.5)
                     }
                 });
 
@@ -178,12 +313,12 @@ export function build_network(sort_method, desc=true)
                 edges.push( 
                     {  // Properties of an edge
                         id: cur_edge_id, from: prev_id, to: cur_node_id, 
-                        arrows: { to: { enabled: true, type: 'arrow' } },
+                        arrows: { to: { enabled: true, type: 'arrow', scaleFactor: 0.5 } },
                         label: windowToTimelineMonths(itemset.window), // edge label text
-                        font: { align: 'center', size: 15, color: '#000' }, // label style
+                        font: { align: 'center', size: 15, color: '#000', vadjust: -15 }, // label style
                         scaling: { label: true },
                         width:1,
-                        smooth:false
+                        smooth: true
                     }
                 );
             }
@@ -191,6 +326,8 @@ export function build_network(sort_method, desc=true)
             first_n = false;
             ++cur_node_id;
             ++cur_edge_id;
+            ++cur_itemset_pos;
+            prev_xpos = n_xpos
         }
 
         var nodes = new vis.DataSet(node_names);
@@ -211,29 +348,22 @@ export function build_network(sort_method, desc=true)
         const info_element = document.createElement('div');
         info_element.className = 'patInfo';
         info_element.style.position = container.style.position;
-        const slePct = (seq.num_patients[0] / TOT_SLE * 100).toFixed(1)
-        const controlPct = (seq.num_patients[1] / TOT_CONTROLS * 100).toFixed(1)
 
-        info_element.innerHTML = `
-            <div class="network-stats">
-                <div class="group left">
-                    <strong>${seq.num_patients[0]}</strong>
-                    <span>(${slePct}%)</span>
-                    <label>SLE</label>
-                </div>
-
-                <div class="group right">
-                    <strong>${seq.num_patients[1]}</strong>
-                    <span>(${controlPct}%)</span>
-                    <label>CONTROLS</label>
-                </div>
-            </div>
-        `;
 
         graph_layer.appendChild(info_element);
 
-        const n_network = new vis.Network(containing_element, data, network_options)
-        
+        const n_network = new vis.Network(containing_element, data, network_options);
+
+        // Set initial network pos (same pos for all)
+        n_network.moveTo({
+            position: {
+                x: 0,
+                y: 65
+            },
+            scale: 1,
+            animation: false
+        });
+
         n_network.on("click", function (params) {
             clickedInsideNetwork = true;
 
@@ -257,6 +387,27 @@ export function build_network(sort_method, desc=true)
             info_element.style.position = "absolute";
             info_element.style.top = canvasPos.y + rect.top + window.scrollY - Y_OFFSET + "px";
             info_element.style.display = "block";
+            
+            var ref_seq = node_to_seq.get(nodeId);
+            
+            // Show pattern info
+            const slePct = (ref_seq.num_patients[0] / TOT_SLE * 100).toFixed(1)
+            const controlPct = (ref_seq.num_patients[1] / TOT_CONTROLS * 100).toFixed(1)
+            info_element.innerHTML = `
+                <div class="network-stats">
+                    <div class="group left">
+                        <strong>${ref_seq.num_patients[0]}</strong>
+                        <span>(${slePct}%)</span>
+                        <label>SLE</label>
+                    </div>
+
+                    <div class="group right">
+                        <strong>${ref_seq.num_patients[1]}</strong>
+                        <span>(${controlPct}%)</span>
+                        <label>CONTROLS</label>
+                    </div>
+                </div>
+            `;
 
             revealedNodes.add(info_element)
             info_element.style.display = "block";

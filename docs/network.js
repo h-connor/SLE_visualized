@@ -612,8 +612,8 @@ var patterns_all = null;
 var client = new XMLHttpRequest();
 var tot_loaded_files = 0
 
-console.log(new URL("data/file.json", window.location.href));
 var github_url = 'https://raw.githubusercontent.com/h-connor/SLE_visualized/main/';
+console.log(new URL("data/file.json", window.location.href));
 client.open('GET', github_url + 'data/_contrasted_final_results_CONTRAST_PREFIX.txt', true);
 client.onreadystatechange = function () {
   if (client.readyState === 4 && client.status === 200) {

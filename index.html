@@ -28,7 +28,7 @@
       #color {
         position: fixed;
         right: 9vw;
-        top: 35vw;
+        top: 55vh;
       }
 
       #color-scheme {
@@ -37,7 +37,7 @@
         background: linear-gradient(
             to top,
             rgb(173,216,230) 0%,
-            rgb(0,102,204) 33%,
+            rgb(0,102,114) 33%,
             rgb(0,180,75) 66%,
             rgb(220,50,50) 100%
         );
@@ -64,6 +64,35 @@
         color: cyan;
       }
 
+      .plus-icon {
+        position: relative;
+        width: 32px;
+        height: 32px;
+      }
+
+      .plus-icon::before,
+      .plus-icon::after {
+          content: "";
+          position: absolute;
+          background: #2563eb; /* modern blue */
+          border-radius: 999px;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+      }
+
+      /* Horizontal bar */
+      .plus-icon::before {
+          width: 24px;
+          height: 4px;
+      }
+
+      /* Vertical bar */
+      .plus-icon::after {
+          width: 4px;
+          height: 24px;
+      }
+
       .cluster {
         border solid 1 black;
       }
@@ -73,16 +102,18 @@
         height: 170px;
         border-right: 2px solid black;
         z-index: 1;
+        margin-top: 30px;
       }
 
       .patInfo {
+        position: absolute;
         width: 30vw;
-        height: 50px;
+        height: 80px;
 
         margin-left: 23vw;
+        transform: translateY(-35px);
         z-index: -1;
         
-        position: fixed;
         pointer-events: none;
         display: none;
 
@@ -113,39 +144,48 @@
       }
 
       .network-info {
-          display: flex;
-          align-items: center;
-          gap: 16px;
+        display: flex;
+        align-items: center;
+        gap: 16px;
       }
 
       .network-stats {
-          display: flex;
-          flex-direction: row;
-          justify-content: space-between;
-          align-items: center;
+        position: relative;
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        justify-content: center;
+        justify-items: center;
+        gap: 10px 40px;
 
-          width: 100%;
-          white-space: nowrap;   /* prevents breaking */
-          flex-wrap: nowrap;     /* forces single line */
+        width: 100%;
+        white-space: nowrap; 
+        flex-wrap: nowrap; 
+        top: -15px;
       }
 
-      .group {
-          display: flex;
-          align-items: center;
-          gap: 6px;
-          white-space: nowrap;
+      .selected.seq {
+        grid-column: 1 / span 3;
+        text-align: center;
+        font-size: 10px;
       }
 
-      .group.left {
-          justify-content: flex-start;
-          margin-left: 3vw;
-          margin-bottom: 39px;
+      .group.left.sup {
+        grid-column: 2;
+        text-align: center;
+        transform: translateX(-65px);
       }
 
-      .group.right {
-          justify-content: flex-end;
-          margin-right: 0vw;
-          margin-bottom: 39px;
+      .group.right.sup {
+        grid-column: 3;
+        text-align: center;
+        transform: translateX(-75px);
+      }
+
+      .group.odds {
+        grid-column: 1 / span 3;
+        justify-self: center;
+        white-space: nowrap;
+        text-align: center;
       }
 
       #app {
@@ -189,6 +229,7 @@
       .optionRow {
         display: flex;
         align-items: center;
+        width: 18vw;
         gap: 8px;
         padding: 6px 8px;
         border-radius: 6px;
@@ -265,6 +306,16 @@
           <span>Enable clustering</span>
         </label>
 
+        <label class="optionRow">
+          <input type="checkbox" id="compressing">
+          <span>Enable compressing</span>
+        </label>
+
+        <label class="optionRow">
+          <input type="checkbox" id="contrasted-only" checked>
+          <span>Contrastive-only</span>
+        </label>
+
         <div class="sectionLabel">Sorting</div>
         <label class="optionRow">
           <input type="radio" name="sorting" value="desc" checked="checked">
@@ -291,8 +342,11 @@
         <script type="module">
         import { SORT_TYPE, build_network } from './docs/network.js'
 
-        var sort_type = SORT_TYPE.LENGTH // default
-        var desc = true; // Default
+        // Assigning defaults for UI selections
+        var sort_type = SORT_TYPE.LENGTH
+        var desc = true; 
+        var compress = false;
+        var contrasted_only = true;
 
 
         // Radio buttons: Sorting order
@@ -307,7 +361,7 @@
                 }
 
                 // Sort in ascend or descending order
-                build_network(sort_type, desc);
+                build_network(sort_type, desc, compress, contrasted_only);
             });
         });
 
@@ -321,7 +375,19 @@
             else if (value === "odds_ratio") sort_type = SORT_TYPE.ODDS;
             else if (value === "growth_rate") sort_type = SORT_TYPE.growth;
 
-            build_network(sort_type, desc);
+            build_network(sort_type, desc, compress, contrasted_only);
+        });
+
+        // Check box for compressed
+        document.getElementById("compressing").addEventListener("change", function () {
+            compress = this.checked;
+            build_network(sort_type, desc, compress, contrasted_only);
+        });
+
+        // Check box for contrasted
+        document.getElementById("contrasted-only").addEventListener("change", function () {
+            contrasted_only = this.checked;
+            build_network(sort_type, desc, compress, contrasted_only);
         });
         </script>
 

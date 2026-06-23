@@ -613,6 +613,7 @@ var client = new XMLHttpRequest();
 var tot_loaded_files = 0
 
 const path1 = new URL("./data/_contrasted_final_results_CONTRAST_PREFIX.txt", window.location.href);
+console.log(path1.href);
 client.open('GET', path1, true);
 client.onreadystatechange = function () {
   if (client.readyState === 4 && client.status === 200) {

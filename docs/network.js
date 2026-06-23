@@ -1,4 +1,4 @@
-import { build_objs, windowToTimelineMonths } from "./patterns.js";
+import { build_objs, windowToTimelineMonths, load_pattern_data } from "./patterns.js";
 import { TOT_SLE, TOT_CONTROLS } from "./metrics.js";
 const revealedNodes = new Set(); // Nodes set to visible / clicked on
 var clickedInsideNetwork = false;
@@ -605,6 +605,9 @@ window.addEventListener("click", function (e) {
 
     clickedInsideNetwork = false;
 });
+
+// Prep pattern script
+load_pattern_data();
 
 // Fetch contrasteed results file and load the results to the page
 var patterns_contrasted = null;

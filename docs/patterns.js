@@ -6,8 +6,17 @@ import { Scanner } from "./scanner.js";
 import { getRatiosForSeq, getGR } from "./metrics.js";
 
 const CAT_SHORT = './data/category_shortener.json'
-const resp = await fetch(CAT_SHORT);
-const category_shortener = await resp.json();
+var category_shortener;
+
+export async function load_pattern_data() {
+    const response = await fetch(CAT_SHORT);
+
+    if (!response.ok) {
+        throw new Error(`HTTP error: ${response.status}`);
+    }
+
+    category_shortener = await response.json();
+}
 
 class SequenceItem {
   constructor(value, window) {

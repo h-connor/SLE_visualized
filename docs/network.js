@@ -632,8 +632,8 @@ async function load_data(contrasted_file, all_file) {
 }
 
 // const path1 = 
-const CONTRAST_FL = "./data/_contrasted_final_results_CONTRAST_PREFIX.txt";
-const ALL_FL = "./data/_contrasted_final_results_BH_PREFIX.txt";
+const CONTRAST_FL = "./data/contrasted_final_results_CONTRAST_PREFIX.txt";
+const ALL_FL = "./data/contrasted_final_results_BH_PREFIX.txt";
 
 await load_data(CONTRAST_FL, ALL_FL);
 build_network(SORT_TYPE.LENGTH);

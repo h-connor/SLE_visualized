@@ -612,7 +612,8 @@ var patterns_all = null;
 var client = new XMLHttpRequest();
 var tot_loaded_files = 0
 
-client.open('GET', './data/_contrasted_final_results_CONTRAST_PREFIX.txt', true);
+const path1 = new URL("./data/_contrasted_final_results_CONTRAST_PREFIX.txt", window.location.href);
+client.open('GET', path1, true);
 client.onreadystatechange = function () {
   if (client.readyState === 4 && client.status === 200) {
     patterns_contrasted = client.responseText;
@@ -625,7 +626,8 @@ client.onreadystatechange = function () {
 client.send();
 
 var client2 = new XMLHttpRequest();
-client2.open('GET', './data/_contrasted_final_results_BH_PREFIX.txt', true);
+const path2 = new URL("./data/_contrasted_final_results_BH_PREFIX.txt", window.location.href);
+client2.open('GET', path2, true);
 client2.onreadystatechange = function () {
   if (client.readyState === 4 && client.status === 200) {
     patterns_all = client.responseText;

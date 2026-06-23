@@ -330,7 +330,7 @@
         <div class="menuSection">
           <div class="sectionLabel">Sort Method</div>
             <select id="sortMethod" class="dropdown">
-              <option value="length">Length / Default</option>
+              <option value="length" selected>Length / Default</option>
               <option value="frequency">SLE Frequency</option>
               <option value="odds_ratio">Odds Ratio</option>
               <option value="growth_rate">Growth Rate</option>
@@ -373,7 +373,7 @@
             if (value === "length") sort_type = SORT_TYPE.LENGTH;
             else if (value === "frequency") sort_type = SORT_TYPE.FREQ;
             else if (value === "odds_ratio") sort_type = SORT_TYPE.ODDS;
-            else if (value === "growth_rate") sort_type = SORT_TYPE.growth;
+            else if (value === "growth_rate") sort_type = SORT_TYPE.GROWTH;
 
             build_network(sort_type, desc, compress, contrasted_only);
         });

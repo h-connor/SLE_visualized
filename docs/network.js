@@ -56,9 +56,9 @@ function sort_method_comp(seqA, seqB, sort_method) {
         case SORT_TYPE.FREQ:
             return seqA.num_patients[0] > seqB.num_patients[0];
         case SORT_TYPE.ODDS:
-            return seqA.odds_ratio > seqB.odds_ratio;
+            return seqA.odds_ratio[1] > seqB.odds_ratio[1];
         case SORT_TYPE.GROWTH:
-            return seqA.GROWTH > seqB.GROWTH;
+            return seqA.growth_rate > seqB.growth_rate;
 
         default:
             return false;
@@ -612,8 +612,7 @@ var patterns_all = null;
 var client = new XMLHttpRequest();
 var tot_loaded_files = 0
 
-var github_url = 'https://raw.githubusercontent.com/h-connor/SLE_visualized/main/';
-console.log(new URL("data/file.json", window.location.href));
+var github_url = ''; // 'https://raw.githubusercontent.com/h-connor/SLE_visualized/main/';
 client.open('GET', github_url + 'data/_contrasted_final_results_CONTRAST_PREFIX.txt', true);
 client.onreadystatechange = function () {
   if (client.readyState === 4 && client.status === 200) {

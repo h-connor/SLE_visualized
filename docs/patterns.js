@@ -5,9 +5,7 @@
 import { Scanner } from "./scanner.js";
 import { getRatiosForSeq, getGR } from "./metrics.js";
 
-const PATS_FILE = "../data/_contrasted_final_results.txt";
-const CAT_SHORT = '../data/category_shortener.json'
-
+const CAT_SHORT = './data/category_shortener.json'
 const resp = await fetch(CAT_SHORT);
 const category_shortener = await resp.json();
 

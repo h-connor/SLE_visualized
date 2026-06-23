@@ -615,31 +615,54 @@ var patterns_all = null;
 var client = new XMLHttpRequest();
 var tot_loaded_files = 0
 
-const path1 = new URL("./data/_contrasted_final_results_CONTRAST_PREFIX.txt", window.location.href);
-console.log(path1.href);
-client.open('GET', path1, true);
-client.onreadystatechange = function () {
-  if (client.readyState === 4 && client.status === 200) {
-    patterns_contrasted = client.responseText;
-    tot_loaded_files++;
+async function load_data(contrasted_file, all_file) {
+    const response = await fetch(contrasted_file);
 
-    if (tot_loaded_files == 2)
-        build_network(SORT_TYPE.LENGTH);
-  }
-};
-client.send();
+    if (!response.ok) {
+        throw new Error(`HTTP error: ${response.status}`);
+    }
 
-var client2 = new XMLHttpRequest();
-const path2 = new URL("./data/_contrasted_final_results_BH_PREFIX.txt", window.location.href);
-client2.open('GET', path2, true);
-client2.onreadystatechange = function () {
-  if (client.readyState === 4 && client.status === 200) {
-    patterns_all = client.responseText;
-    tot_loaded_files++;
+    const response2 = await fetch(all_file);
+    if (!response2.ok){
+        throw new Error(`HTTP error: ${response2.status}`);
+    }
 
-    if (tot_loaded_files == 2)
-        build_network(SORT_TYPE.LENGTH);
-  }
-};
-client2.send();
+    patterns_contrasted = await response.text();
+    patterns_all = await response2.text();
+}
+
+// const path1 = 
+const CONTRAST_FL = "./data/_contrasted_final_results_CONTRAST_PREFIX.txt";
+const ALL_FL = "./data/_contrasted_final_results_BH_PREFIX.txt";
+
+await load_data(CONTRAST_FL, ALL_FL);
+build_network(SORT_TYPE.LENGTH);
+
+// const path1 = new URL("./data/_contrasted_final_results_CONTRAST_PREFIX.txt", window.location.href);
+// console.log(path1.href);
+// client.open('GET', path1, true);
+// client.onreadystatechange = function () {
+//   if (client.readyState === 4 && client.status === 200) {
+//     patterns_contrasted = client.responseText;
+//     tot_loaded_files++;
+
+//     if (tot_loaded_files == 2)
+//         build_network(SORT_TYPE.LENGTH);
+//   }
+// };
+// client.send();
+
+// var client2 = new XMLHttpRequest();
+// const path2 = new URL("./data/_contrasted_final_results_BH_PREFIX.txt", window.location.href);
+// client2.open('GET', path2, true);
+// client2.onreadystatechange = function () {
+//   if (client.readyState === 4 && client.status === 200) {
+//     patterns_all = client.responseText;
+//     tot_loaded_files++;
+
+//     if (tot_loaded_files == 2)
+//         build_network(SORT_TYPE.LENGTH);
+//   }
+// };
+// client2.send();
 

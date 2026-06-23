@@ -141,10 +141,29 @@ export class Sequence {
        A -> B -> C is indx of 2
     */
 
+    if (indx == this.length - 1)
+      return this;
+  
+    // Found something by the given index
     if (this.subset_link !== null && this.subset_link.has(indx))
       return this.subset_link.get(indx);
 
-    return this;
+    // Search for the lowest find we can
+    var lowest_find = this;
+    var lowest_key = this.length - 1;
+
+    if (this.subset_link !== null) {
+      for (var key of this.subset_link.keys()) {
+        if (key < lowest_key)
+        {
+          lowest_key = key;
+          lowest_find = this.subset_link.get(key);
+          
+        }
+      }
+    }
+
+    return lowest_find;
 
     // var cur_seq = this;
     // var cur_indx = this.length - 1;

@@ -229,7 +229,7 @@ function get_node_properties(node_id, label_text, itemset_window, sequence_lengt
 
     // Amount to shift a node by to make the edge longer
     // Scale the smaller sequences by a larger amount (as we have more room)
-    var edge_shift = (((sequence_length < RESCALE_AT_LEN) ? EDGE_XFACTOR * 2 : EDGE_XFACTOR) * itemset_window) - NO_WIND_RED;
+    var edge_shift = (EDGE_XFACTOR * itemset_window) - NO_WIND_RED;
 
     if (starting_node)
         var n_xpos = INIT_POS;

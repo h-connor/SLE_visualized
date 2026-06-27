@@ -3,7 +3,9 @@ import { TOT_SLE, TOT_CONTROLS } from "./metrics.js";
 const revealedNodes = new Set(); // Nodes set to visible / clicked on
 var clickedInsideNetwork = false;
 
+// Constants for access in node_objs map
 const PLUS_NAME = "plus-sym";
+const RAW_NODE = "node-obj";
 
 var networks = [];
 var network_containers = [];
@@ -75,13 +77,13 @@ function sort_sequences(sequences, sort_method) {
     
     var n_sequences = []
     for (var i = 0; i < sequences.length; i++) {
-        var cur_seq = sequences[i].central_path;
+        var cur_seq = sequences[i].central_seq;
 
         // Go through n_sequences
         var inserted = false;
         for (var k = 0; k < n_sequences.length; k++)
         {
-            var comp_seq = n_sequences[k].central_path;
+            var comp_seq = n_sequences[k].central_seq;
 
             if (sort_method_comp(cur_seq, comp_seq, sort_method)) {
                 inserted = true;
@@ -215,7 +217,8 @@ function darkenRGB(rgb, amount = 0.2) {
     return `rgb(${darker.join(", ")})`;
 }
 
-function get_node_properties(node_id, label_text, itemset_window, sequence_length, starting_node, subset_seq, prev_x) {
+function get_node_properties(node_id, label_text, itemset_window, sequence_length, 
+    starting_node, subset_seq, prev_x, network_node) {
     // Return the properties of the node
     // Returns a list [node properties, xpos, ypos]
 
@@ -225,7 +228,18 @@ function get_node_properties(node_id, label_text, itemset_window, sequence_lengt
     const NO_WIND_RED = 60;
     const DEF_NEXT_ITEMSET_DIST = 170;
     const INIT_POS = (-window.innerWidth / 2) + (window.innerWidth / 7.5);
-    const YPOS = 65;
+
+    const YPOS_SHIFT_PIX = window.innerHeight / 10;
+
+    // negative shift amount if odd, positive if event
+    const YPOS_SHIFT_AMT = (network_node.value.network_level - 1) 
+                            * ((network_node.value.network_level % 2 == 0) ? 1 : -1) 
+                            *  YPOS_SHIFT_PIX;
+
+    const YPOS = 65 + YPOS_SHIFT_AMT;
+
+    // console.log("SHIFT AMT ", YPOS_SHIFT_AMT, " Via level: ", network_node.value.network_level);
+    // console.log("Final Y ", YPOS);
 
     // Amount to shift a node by to make the edge longer
     // Scale the smaller sequences by a larger amount (as we have more room)
@@ -271,7 +285,7 @@ function get_edge_properties(edge_id, prev_id, node_id, window) {
 }
 
 function draw_single_path(network, node_names, edges, cur_node_id, cur_edge_id) {
-    let seq = network.central_path; // Assign the sequence itself instead of the network used
+    let seq = network.central_seq; // Assign the sequence itself instead of the network used
 
     // Creates nodes and edges 
     // Edge: 1st itemset -> next -> until end of sequence
@@ -287,39 +301,31 @@ function draw_single_path(network, node_names, edges, cur_node_id, cur_edge_id) 
 
         // The subset that this position in the sequence refers to (if available)
         var subset_seq = seq.get_subset_by_seq_indx(cur_itemset_pos);
-        node_to_seq.set(cur_node_id, subset_seq); // Track node -> seq
+        node_to_seq.set(cur_node_id[0], subset_seq); // Track node -> seq
 
         var label_text = itemset.name_str();
         
         // Get node information
-        var node_prop = get_node_properties(cur_node_id, label_text, itemset.window, seq.length, 
-            cur_itemset_pos == 0, subset_seq, prev_xpos);
+        var node_prop = get_node_properties(cur_node_id[0], label_text, itemset.window, seq.length, 
+            cur_itemset_pos == 0, subset_seq, prev_xpos, network.head);
         node_names.push(node_prop[0]);
 
         // Set edge
         if (!first_n){
-            prev_id = cur_node_id - 1;
-            edges.push(get_edge_properties(cur_edge_id, prev_id, cur_node_id, itemset.window));   
-            ++cur_edge_id;
+            prev_id = cur_node_id[0] - 1;
+            edges.push(get_edge_properties(cur_edge_id[0], prev_id, cur_node_id[0], itemset.window));   
+            ++cur_edge_id[0];
         }
-
-        // Creating custom elements of a node
-        const plus_symb = document.createElement('div');
-        var node_map = new Map();
-        node_map.set(PLUS_NAME, plus_symb);
-        node_objs.set(cur_node_id, node_map);
         
         first_n = false;
-        ++cur_node_id;
+        ++cur_node_id[0];
         ++cur_itemset_pos;
         prev_xpos = node_prop[1];
     }
-
-    return [[cur_node_id], cur_edge_id];
 }
 
-function draw_single_seq(seq, node_names, edges, cur_node_id, cur_edge_id, label_text, itemset_window, 
-    first_n=true, prev_xpos=0, cur_itemset_pos = 0) {
+function draw_single_seq(seq, node_names, edges, label_text, itemset_window, 
+    cur_node, first_n=true, prev_xpos=0, cur_itemset_pos = 0) {
     /*
         Draw out a single sequence
 
@@ -328,30 +334,30 @@ function draw_single_seq(seq, node_names, edges, cur_node_id, cur_edge_id, label
 
     // The subset that this position in the sequence refers to (if available)
     var subset_seq = seq.get_subset_by_seq_indx(cur_itemset_pos);
-    node_to_seq.set(cur_node_id[0], subset_seq); // Track node -> seq
+    node_to_seq.set(cur_node.node_id, subset_seq); // Track node -> seq
     
     // Get node information
-    var node_prop = get_node_properties(cur_node_id[0], label_text, itemset_window, seq.length, 
-        cur_itemset_pos == 0, subset_seq, prev_xpos);
+    var node_prop = get_node_properties(cur_node.node_id, label_text, itemset_window, seq.length, 
+        cur_itemset_pos == 0, subset_seq, prev_xpos, cur_node);
     node_names.push(node_prop[0]);
 
     // Set edge
     if (!first_n){
-        var prev_id = cur_node_id[0] - 1;
-        edges.push(get_edge_properties(cur_edge_id[0], prev_id, cur_node_id[0], itemset_window));
+        var prev_id = cur_node.prev.node_id;
+        edges.push(get_edge_properties(cur_node.node_id, prev_id, cur_node.node_id, itemset_window));
     }
 
     // Creating custom elements of a node
     const plus_symb = document.createElement('div');
     var node_map = new Map();
+    node_map.set(RAW_NODE, cur_node);
     node_map.set(PLUS_NAME, plus_symb);
-    node_objs.set(cur_node_id[0], node_map);
+    node_objs.set(cur_node.node_id, node_map);
 
     return node_prop[1]
 }
 
-function draw_multi_level_path(cur_node, node_names, edges, cur_node_id, cur_edge_id, 
-    first_n=true, prev_xpos=0, cur_itemset_pos = 0, prev_id = -1)
+function draw_multi_level_path(cur_node, node_names, edges, first_n=true, prev_xpos=0, cur_itemset_pos = 0)
 {
     /*
         Draw a multi-path network
@@ -359,34 +365,24 @@ function draw_multi_level_path(cur_node, node_names, edges, cur_node_id, cur_edg
         Returns the final edge ID
     */
 
-    console.log(cur_node, cur_itemset_pos);
-
     // Get relevant node info to draw it
     var seq = cur_node.value;
     var itemset_to_draw = seq.get_item(cur_itemset_pos);
 
-    prev_xpos = draw_single_seq(seq, node_names, edges, cur_node_id, cur_edge_id, itemset_to_draw.name_str(), 
-        itemset_to_draw.window, first_n, prev_xpos, cur_itemset_pos);
-        
-    ++cur_node_id[0];
-    ++cur_edge_id;
-    ++cur_itemset_pos;
-    var max_edge_id = cur_edge_id
+    prev_xpos = draw_single_seq(seq, node_names, edges, itemset_to_draw.name_str(), 
+        itemset_to_draw.window, cur_node, first_n, prev_xpos, cur_itemset_pos);
 
     if (cur_node.next_nodes.length > 0) {
         for (let oth_path of cur_node.next_nodes) {
             // Draw each next path
-            
-            draw_multi_level_path(oth_path, node_names, edges, cur_node_id, cur_edge_id, false, 
-                prev_xpos, cur_itemset_pos + 1, cur_node_id[0] - 1
-            )
+            draw_multi_level_path(oth_path, node_names, edges, false, prev_xpos, cur_itemset_pos + 1)
         }
     }
-
-    return max_edge_id;
 }
 
-function draw_network(network, network_options, network_id, cur_node_id, cur_edge_id, compressed=true) {
+function draw_network(network, network_options, network_id, cur_node_id, cur_edge_id, 
+    is_first_network, compressed=true) {
+        
     // Draw a given network
     // Returns the node and edge ids after drawing
 
@@ -397,24 +393,11 @@ function draw_network(network, network_options, network_id, cur_node_id, cur_edg
     var node_names = [];
     var edges = [];
 
-    if (network.central_path.get_item(0).length == 1) {
-        console.log("Network: ");
-        if (network.head.next_nodes !== null) 
-        {
-            console.log(network.central_path.get_item(0).get_item(0).value, network.central_path.get_item(0).length, network);
-        }
-        else {
-            console.log('No next node in network');
-        }
-    }
-
     if (!compressed) {
-        var [cur_node_id, cur_edge_id] = draw_single_path(network, node_names, edges, cur_node_id[0], cur_edge_id);
+        draw_single_path(network, node_names, edges, cur_node_id, cur_edge_id);
     }
     else {
-        var cur_node_id = [cur_node_id] // To allow pass by reference
-        cur_edge_id = draw_multi_level_path(network.head, node_names, edges, cur_node_id, cur_edge_id);
-        var cur_node_id = cur_node_id[0] 
+        draw_multi_level_path(network.head, node_names, edges);
     }
 
     // Done -- Setup the network
@@ -431,13 +414,25 @@ function draw_network(network, network_options, network_id, cur_node_id, cur_edg
     // Styling and setting up element attributes
     containing_element.className = 'net';
     containing_element.setAttribute('id', 'Network #' + network_id);
+    containing_element.style.height = (110 * (network.max_level)) + "px";
+
+    if (compressed) {
+        console.log("Base element:", network.central_path, network.max_level, network.head);
+    }
+
+    if (is_first_network) { // Ensure first sequence has room from top of the page
+        containing_element.style.marginTop = "60px";
+        containing_element.style.marginBottom = '40px';
+    } else {
+        containing_element.style.marginTop = '40px';
+    }
+
     container.appendChild(containing_element);
 
     // On-click info-element
     const info_element = document.createElement('div');
     info_element.className = 'patInfo';
     info_element.style.position = container.style.position;
-
 
     graph_layer.appendChild(info_element);
 
@@ -453,12 +448,15 @@ function draw_network(network, network_options, network_id, cur_node_id, cur_edg
             const rect = n_network.body.container.getBoundingClientRect();
 
             // TODO: Plus symbols on the nodes
-            // var plus_symb = node_objs.get(nodeId).get(PLUS_NAME);
-            // plus_symb.className = "plus-icon";
-            // plus_symb.style.position = 'absolute';
-            // plus_symb.style.left = `${canvasPos.x + 15}px`;
-            // plus_symb.style.top = `${rect.y + 20}px`;
-            // containing_element.appendChild(plus_symb);
+            // if (compressed) {
+                // var node_map = node_objs.get(nodeId);
+                // var plus_symb = node_objs.get(nodeId).get(PLUS_NAME);
+                // plus_symb.className = "plus-icon";
+                // plus_symb.style.position = 'absolute';
+                // plus_symb.style.left = `${canvasPos.x + 15}px`;
+                // plus_symb.style.top = `${rect.y + 20}px`;
+                // containing_element.appendChild(plus_symb);
+            // }
         }
     });
 
@@ -531,7 +529,6 @@ function draw_network(network, network_options, network_id, cur_node_id, cur_edg
     
     networks.push(n_network);
     network_containers.push(containing_element)
-    return [cur_node_id, cur_edge_id]
 }
 
 export function build_network(sort_method, desc=true, compressed=false, contrasted_only=true) 
@@ -574,11 +571,13 @@ export function build_network(sort_method, desc=true, compressed=false, contrast
         }
     };
 
-    var edge_id = 0;
+    var edge_id = [0];
     var node_id = [0];
+    var first_n = true;
     for(let seq_n of sequence_networks){
-       [node_id, edge_id] = draw_network(seq_n, network_options, network_id, node_id, edge_id, compressed);
+       draw_network(seq_n, network_options, network_id, node_id, edge_id, first_n, compressed);
        network_id++;
+       first_n = false;
     }
 }
 

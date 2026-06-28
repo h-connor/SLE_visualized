@@ -272,6 +272,20 @@ export class Sequence {
   }
 }
 
+export function get_earliest_node(node)
+{
+    var cur_node = node;
+    var prev_node = node.prev;
+
+    while (prev_node !== null)
+    {
+        cur_node = prev_node;
+        prev_node = prev_node.prev;
+    }
+
+    return cur_node;
+}
+
 function find(str, sub, start = 0, end = str.length) {
     // Javascript equivalent to pythons string.find
 
@@ -490,20 +504,21 @@ class NetworkNode {
 
   static num_nodes = 0;
 
-  constructor(seq) {
+  constructor(seq, on_original_path=false) {
     this.value = seq;
     this.next_nodes = [];
     this.prev = null;
+    this.on_path = on_original_path;
 
     this.node_id = NetworkNode.num_nodes;
     NetworkNode.num_nodes += 1;
   }
 
-  add_to_next(seq_value) {
+  add_to_next(seq_value, on_original_path=false) {
     // Add the value as a next node to this node
     // Returns the inserted node
 
-    var n_node = new NetworkNode(seq_value);
+    var n_node = new NetworkNode(seq_value, on_original_path);
     n_node.prev = this;
 
     this.next_nodes.push(n_node);
@@ -518,7 +533,7 @@ class SequenceNetwork {
   static num_networks = 0;
 
   constructor(seq) {
-    this.head = new NetworkNode(seq);
+    this.head = new NetworkNode(seq, true);
     this.central_seq = seq;
     this.max_level = 1;
 
@@ -610,7 +625,23 @@ function longer_node_network(cur_sequences, current_sets_in_common, all_networks
   if (current_network === null) {
     for (var key_p of alone_seqs) {
       var [key, value] = key_p;
-      all_networks.push(new SequenceNetwork(value));
+
+      var init_node_seq = value.get_subset_by_seq_indx(current_sets_in_common - 1).Copy()
+      var n_network = new SequenceNetwork(init_node_seq)
+      all_networks.push(n_network);
+
+      // Add the sequence to the central path
+      var cur_node = n_network.head;
+      var cur_index = current_sets_in_common;
+
+      while (cur_index < value.length) {
+          var n_item = value.get_subset_by_seq_indx(cur_index).Copy();
+
+          n_item.network_level = 1;
+          cur_node = cur_node.add_to_next(n_item, true);
+
+          cur_index += 1;
+        }
 
       common_s_q.delete(key);
     }
@@ -620,6 +651,11 @@ function longer_node_network(cur_sequences, current_sets_in_common, all_networks
 
   // Repeat this process with sequences that have more common elements (i.e., each network)
   for (let common_seqs of common_s_q.values()) {
+
+    for (var i of common_seqs)
+      if (i.toString().includes("{Anemia|hematologic} {Anemia}"))
+        console.log('hi');
+
     if (current_network === null) { // First case: Get the sequence of the first itemset
       var n_path = get_primary_path(common_seqs);
       n_path.network_level = network_level;
@@ -649,14 +685,14 @@ function longer_node_network(cur_sequences, current_sets_in_common, all_networks
           // Following the current path
           var n_path = primary_path
           n_item.network_level = n_item.network_level;
-          var n_node = add_to_node.add_to_next(n_item);
+          var n_node = add_to_node.add_to_next(n_item, n_item.network_level == 1);
         }
         else {
           // Break onto a new path
           network_level += 1;
           var n_path = get_primary_path(common_seqs);
           n_item.network_level = network_level;
-          var n_node = add_to_node.add_to_next(n_item);          
+          var n_node = add_to_node.add_to_next(n_item, n_item.network_level == 1);          
         }
 
         current_network.max_level = Math.max(current_network.max_level, cur_level); // Track highest level overall
@@ -682,7 +718,7 @@ function longer_node_network(cur_sequences, current_sets_in_common, all_networks
           var n_item = common_seqs[0].get_subset_by_seq_indx(add_indx).Copy();
 
           n_item.network_level = node_level;
-          add_to_node = add_to_node.add_to_next(n_item);
+          add_to_node = add_to_node.add_to_next(n_item, n_item.network_level == 1);
 
           add_indx += 1;
         }

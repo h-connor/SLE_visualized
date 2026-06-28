@@ -6,6 +6,8 @@ var clickedInsideNetwork = false;
 // Constants for access in node_objs map
 const PLUS_NAME = "plus-sym";
 const RAW_NODE = "node-obj";
+const NODE_MARGINS = 3;
+const BORDER_WIDTH = 1;
 
 var networks = [];
 var network_containers = [];
@@ -217,6 +219,17 @@ function darkenRGB(rgb, amount = 0.2) {
     return `rgb(${darker.join(", ")})`;
 }
 
+function get_y_shift(network_level) {
+    /* Get the shift in Y pos for a node */
+    
+    const YPOS_BASE_SHIFT = 65; // Default / base shift
+    const YPOS_SHIFT_PIX = YPOS_BASE_SHIFT + 10; // Shift amount per level
+    const YPOS_SHIFT_AMT = (network_level - 1) * YPOS_SHIFT_PIX; // Final shift from level
+
+    const YPOS = YPOS_BASE_SHIFT + YPOS_SHIFT_AMT;
+    return YPOS;
+}
+
 function get_node_properties(node_id, label_text, itemset_window, sequence_length, 
     starting_node, subset_seq, prev_x, network_node) {
     // Return the properties of the node
@@ -229,17 +242,7 @@ function get_node_properties(node_id, label_text, itemset_window, sequence_lengt
     const DEF_NEXT_ITEMSET_DIST = 170;
     const INIT_POS = (-window.innerWidth / 2) + (window.innerWidth / 7.5);
 
-    const YPOS_SHIFT_PIX = window.innerHeight / 10;
-
-    // negative shift amount if odd, positive if event
-    const YPOS_SHIFT_AMT = (network_node.value.network_level - 1) 
-                            * ((network_node.value.network_level % 2 == 0) ? 1 : -1) 
-                            *  YPOS_SHIFT_PIX;
-
-    const YPOS = 65 + YPOS_SHIFT_AMT;
-
-    // console.log("SHIFT AMT ", YPOS_SHIFT_AMT, " Via level: ", network_node.value.network_level);
-    // console.log("Final Y ", YPOS);
+    const YPOS = get_y_shift(network_node.value.network_level);
 
     // Amount to shift a node by to make the edge longer
     // Scale the smaller sequences by a larger amount (as we have more room)
@@ -268,11 +271,12 @@ function get_node_properties(node_id, label_text, itemset_window, sequence_lengt
         color: {
             background: gr_color,
             border: darkenRGB(gr_color, 0.5)
-        }
+        },
+        borderWidth: BORDER_WIDTH
     }, n_xpos, YPOS];
 }
 
-function get_edge_properties(edge_id, prev_id, node_id, window) {
+function get_edge_properties(edge_id, prev_id, node_id, window, multi_level) {
     return {  // Properties of an edge
         id: edge_id, from: prev_id, to: node_id, 
         arrows: { to: { enabled: true, type: 'arrow', scaleFactor: 0.5 } },
@@ -280,7 +284,11 @@ function get_edge_properties(edge_id, prev_id, node_id, window) {
         font: { align: 'center', size: 15, color: '#000', vadjust: -15 }, // label style
         scaling: { label: true },
         width:1,
-        smooth: true
+        smooth: {
+            enabled: multi_level,
+            type: "curvedCCW",
+            roundness: 0.4
+        }
     }
 }
 
@@ -313,7 +321,7 @@ function draw_single_path(network, node_names, edges, cur_node_id, cur_edge_id) 
         // Set edge
         if (!first_n){
             prev_id = cur_node_id[0] - 1;
-            edges.push(get_edge_properties(cur_edge_id[0], prev_id, cur_node_id[0], itemset.window));   
+            edges.push(get_edge_properties(cur_edge_id[0], prev_id, cur_node_id[0], itemset.window, false));   
             ++cur_edge_id[0];
         }
         
@@ -344,7 +352,7 @@ function draw_single_seq(seq, node_names, edges, label_text, itemset_window,
     // Set edge
     if (!first_n){
         var prev_id = cur_node.prev.node_id;
-        edges.push(get_edge_properties(cur_node.node_id, prev_id, cur_node.node_id, itemset_window));
+        edges.push(get_edge_properties(cur_node.node_id, prev_id, cur_node.node_id, itemset_window, seq.network_level != 1));
     }
 
     // Creating custom elements of a node
@@ -355,6 +363,163 @@ function draw_single_seq(seq, node_names, edges, label_text, itemset_window,
     node_objs.set(cur_node.node_id, node_map);
 
     return node_prop[1]
+}
+
+function get_path_pos(node, original_path) {
+    /* 
+        Get the position that a node is in on the original path 
+        For example, given the path: A -> B -> C
+
+        With the node that represents A -> B -> D. We get a position of 1 (B) as the latest point
+
+        Assumption: node starts at C.
+    */
+
+    var cur_node = node;
+    var offset_pos = 0;
+    while (cur_node !== null)
+    {
+        if (cur_node.value.get_item(itemset_pos).Equals(original_path.get_item(itemset_pos)))
+        {
+            offset_pos += 1;
+            cur_node = cur_node.prev;
+        }
+    }
+}
+
+function find_earlier_paths(nodeIDA, nodeIDB, original_path) {
+    /*
+        Given two network nodes (Vis network nodes)
+
+        Return the node that is not on the original path (else, the smallest value, else nodeA)
+    */
+
+        // TODO: In progress
+
+    // The nodes in the network
+    // These nodes are the point of overlap
+    var nodeA = node_objs.get(nodeIDA).get(RAW_NODE);
+    var nodeB = node_objs.get(nodeIDB).get(RAW_NODE);
+
+    var res_node = nodeA;
+    var res_id = nodeIDA;
+
+    if (nodeA.on_path && !nodeB.on_path)
+    {
+        // B wins
+        res_node = nodeB;
+        res_id = nodeIDB;
+    }
+    else if (!nodeA.on_path && !nodeB.on_path)
+    {
+        // Neither on path
+        var b_smaller = (nodeB.value.length < nodeA.value.length) ? true : false
+
+        if (b_smaller)
+        {
+            res_node = nodeB;
+            res_id = nodeIDB;
+        }
+    }
+
+    return [res_node, res_id];
+}
+
+function node_shift(visNetwork, node_point, yShift, checked_nodes) {
+    /* 
+        Shift the y values of the given node and all of its future connections 
+        Track what nodes were checked.
+    */
+
+    var nodeId = node_point.node_id;
+    checked_nodes.add(nodeId);
+
+    // Shift the node and all its future nodes by the given y value
+    const pos = visNetwork.getPositions([nodeId])[nodeId];
+    visNetwork.moveNode(nodeId, pos.x, yShift);
+
+    for (var n_node of node_point.next_nodes)
+    {
+        node_shift(visNetwork, n_node, yShift, checked_nodes);
+    }
+}
+
+function network_bounding_box(nodeId, network) {
+    /*
+        Get the bounding box of a node (coordinates)
+    */
+
+    const FUZZY_OFFSET = 2; // Encase of additional information extending from a node
+    const TOT_OFFSET = NODE_MARGINS + FUZZY_OFFSET + BORDER_WIDTH;
+    const BOX = network.getBoundingBox(nodeId);
+
+    return {
+        left: BOX.left + TOT_OFFSET,
+        top: BOX.top + TOT_OFFSET,
+        right: BOX.right - TOT_OFFSET,
+        bottom: BOX.bottom - TOT_OFFSET
+    };
+}
+
+function adjust_levels(visNetwork, network) {
+    /* 
+        Does this network have any nodes that overlap?
+            Given A -> B -> C
+                A -> B -> D
+                A -> D
+
+            The two paths A -> B -> D and A -> D will have the 2nd node too close to one another
+                As they are in the same level (level 2) of the graph.
+
+        Therefore, we check if the next node has this special case. If so, shift the level up to the maximum of the next nodes.
+
+        returns the new highest network_level.
+    */
+
+    const nodeIds = visNetwork.body.data.nodes.getIds();
+    const tracked_nodes = new Set();
+    var highest_level = network.max_level;
+
+    // Search through the networks nodes
+    for (let i = 0; i < nodeIds.length; i++) {
+        const id1 = nodeIds[i];
+
+        if (! tracked_nodes.has(id1)) {
+            for (let j = i + 1; j < nodeIds.length; j++) {
+                
+                const id2 = nodeIds[j];
+
+                // Box positions of each node
+                const box1 = network_bounding_box(id1, visNetwork);
+                const box2 = network_bounding_box(id2, visNetwork);
+
+                // Check for overlap of the bounds
+                const overlapping =
+                            box1.left < box2.right &&
+                            box1.right > box2.left &&
+                            box1.top < box2.bottom &&
+                            box1.bottom > box2.top;
+
+                if (overlapping) {
+                    // Determine which node to shift (The one that diverged earlier in the original path)
+                    var [earlier_node, nodeId] = find_earlier_paths(id1, id2, network.central_path);
+                    [id1, id2].forEach(item => tracked_nodes.add(tracked_nodes)) // Don't shift either of them
+
+                    var nodeA = node_objs.get(id1).get(RAW_NODE);
+                    var nodeB = node_objs.get(id2).get(RAW_NODE);
+
+                    var n_y = get_y_shift(earlier_node.value.network_level + 1);
+                    highest_level = Math.max(highest_level, earlier_node.value.network_level + 1);
+                    
+                    // Shift the previous node to the next level
+                    node_shift(visNetwork, earlier_node, n_y, tracked_nodes);
+                    break; // One shift per node at most
+                }
+            }
+        }
+    }
+
+    network.max_level = highest_level;
 }
 
 function draw_multi_level_path(cur_node, node_names, edges, first_n=true, prev_xpos=0, cur_itemset_pos = 0)
@@ -382,7 +547,7 @@ function draw_multi_level_path(cur_node, node_names, edges, first_n=true, prev_x
 
 function draw_network(network, network_options, network_id, cur_node_id, cur_edge_id, 
     is_first_network, compressed=true) {
-        
+
     // Draw a given network
     // Returns the node and edge ids after drawing
 
@@ -416,10 +581,6 @@ function draw_network(network, network_options, network_id, cur_node_id, cur_edg
     containing_element.setAttribute('id', 'Network #' + network_id);
     containing_element.style.height = (110 * (network.max_level)) + "px";
 
-    if (compressed) {
-        console.log("Base element:", network.central_path, network.max_level, network.head);
-    }
-
     if (is_first_network) { // Ensure first sequence has room from top of the page
         containing_element.style.marginTop = "60px";
         containing_element.style.marginBottom = '40px';
@@ -437,6 +598,22 @@ function draw_network(network, network_options, network_id, cur_node_id, cur_edg
     graph_layer.appendChild(info_element);
 
     const n_network = new vis.Network(containing_element, data, network_options);
+
+    // Adjust the networks conflicting nodes (if applicable, not possible with max_level = 1)
+    if (network.max_level > 1)
+    {   
+        var prev_highest = network.max_level;
+        adjust_levels(n_network, network);
+        
+        // resize if necessary
+        if (network.max_level > prev_highest)
+        {
+            containing_element.style.height = (130 * (network.max_level)) + "px";
+
+            n_network.redraw();
+            n_network.fit();
+        }
+    }
 
     // After drawing, setup everything for each node
     n_network.on("afterDrawing", function(ctx) {
@@ -489,9 +666,9 @@ function draw_network(network, network_options, network_id, cur_node_id, cur_edg
         const pos = n_network.getPositions([nodeId])[nodeId];
         const canvasPos = n_network.canvasToDOM(pos);
         const rect = n_network.body.container.getBoundingClientRect();
-        const Y_OFFSET = 80
+        const Y_OFFSET = compressed ? 0 : 25
 
-        info_element.style.top = canvasPos.y + rect.top + window.scrollY - Y_OFFSET + "px";
+        info_element.style.top = rect.top + window.scrollY - Y_OFFSET + "px";
         info_element.style.display = "block";
         
         var ref_seq = node_to_seq.get(nodeId);
@@ -560,7 +737,7 @@ export function build_network(sort_method, desc=true, compressed=false, contrast
         interaction: { dragNodes: false, dragView: false, zoomView: false },
         nodes: {
             shape: 'box',
-            margin: 3,
+            margin: NODE_MARGINS,
             size:40,
             widthConstraint: 70,
             heightConstraint: 65,

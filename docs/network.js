@@ -190,7 +190,6 @@ function getFutureNodes(startNode, network) {
 
 function collapseNode(nodeId, network) {
     const nodesToCollapse = getFutureNodes(nodeId, network);
-    nodesToCollapse.push(nodeId);
 
     if (nodesToCollapse.length === 0) {
         return;
@@ -368,9 +367,7 @@ function draw_single_seq(seq, node_names, edges, label_text, itemset_window,
     }
 
     // Tracking the node
-    var node_map = new Map();
-    node_map.set(RAW_NODE, cur_node);
-    node_objs.set(cur_node.node_id, node_map);
+    node_objs.set(cur_node.node_id, cur_node);
 
     return node_prop[1]
 }
@@ -408,8 +405,8 @@ function find_earlier_paths(nodeIDA, nodeIDB, original_path) {
 
     // The nodes in the network
     // These nodes are the point of overlap
-    var nodeA = node_objs.get(nodeIDA).get(RAW_NODE);
-    var nodeB = node_objs.get(nodeIDB).get(RAW_NODE);
+    var nodeA = node_objs.get(nodeIDA);
+    var nodeB = node_objs.get(nodeIDB);
 
     var res_node = nodeA;
     var res_id = nodeIDA;
@@ -643,42 +640,6 @@ function draw_network(network, network_options, network_id, cur_node_id, cur_edg
         var y_offset = 65;
     }
 
-    // After drawing, setup everything for each node
-    n_network.on("afterDrawing", function(ctx) {
-        const nodes = n_network.body.data.nodes.getIds();
-
-        for (let nodeId of nodes) {
-
-            // Compressed? Add plus/minus options to the node
-            if (compressed) {
-
-                var node_map = node_objs.get(nodeId);
-                var node = node_map.get(RAW_NODE);
-
-                if (node.on_path && node.next_nodes.length > 1) {
-                    var plus_symb = document.createElement('div');
-                    plus_m_symb.set(nodeId, plus_symb);
-                    
-                    const pos = n_network.getPositions([nodeId])[nodeId];
-                    const canvasPos = n_network.canvasToDOM(pos);
-                    const rect = n_network.body.container.getBoundingClientRect();
-
-                    plus_symb.className = "plus-icon";
-                    plus_symb.style.position = 'absolute';
-                    plus_symb.style.left = `${canvasPos.x + 15}px`;
-                    plus_symb.style.top = `${rect.y + (NODE_HEIGHT * 0.9)}px`;
-                    containing_element.appendChild(plus_symb);
-
-                    plus_symb.addEventListener("mousedown", () => {
-                        console.log('clicked');
-                        plus_symb.classList.toggle("minus");
-                    });
-                }
-            }
-        }
-    });
-
-
     // Set initial network pos (same pos for all)
     n_network.moveTo({
         position: {
@@ -689,6 +650,51 @@ function draw_network(network, network_options, network_id, cur_node_id, cur_edg
         animation: false
     });
     n_network.redraw();
+
+    // Setup everything for each node
+    const net_nodes = n_network.body.data.nodes.getIds();
+    for (let nodeId of net_nodes) {
+
+        // Compressed? Add plus/minus options to the node
+        if (compressed) {
+
+            var node = node_objs.get(nodeId);
+
+            if (node.on_path && node.next_nodes.length > 1) {
+                var plus_symb = document.createElement('div');
+                plus_m_symb.set(nodeId, plus_symb);
+                
+                const pos = n_network.getPositions([nodeId])[nodeId];
+                const canvasPos = n_network.canvasToDOM(pos);
+                const rect = n_network.body.container.getBoundingClientRect();
+
+                plus_symb.className = "plus-icon";
+                plus_symb.classList.toggle("minus"); // Initially off
+                plus_symb.style.position = 'absolute';
+                plus_symb.style.left = `${canvasPos.x + 15}px`;
+                plus_symb.style.top = `${rect.y + (NODE_HEIGHT * 0.9)}px`;
+                containing_element.appendChild(plus_symb);
+
+                plus_symb.addEventListener("mousedown", (event) => {
+                    event.stopPropagation(); // Prevent node click (below this element)
+
+                    // Do we hide or show nodes?
+                    const hide_elems = plus_symb.classList.contains("minus");
+
+                    if (hide_elems)
+                    {
+                        collapseNode(nodeId, n_network);
+                    }
+                    else
+                    {
+                        expandNode(nodeId, n_network);
+                    }
+
+                    plus_symb.classList.toggle("minus"); // Apply next toggle
+                });
+            }
+        }
+    }
 
     // Sequence on-click info
     n_network.on("click", function (params) {

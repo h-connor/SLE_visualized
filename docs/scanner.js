@@ -110,7 +110,7 @@ export class Scanner {
           ];
         } else {
           const temp = currentStr.split("*");
-          return [parseInt(temp[0], 10), parseInt(temp[1], 10)];
+          return [parseInt(temp[0]), parseInt(temp[1])];
         }
       }
     }

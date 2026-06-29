@@ -667,7 +667,7 @@ function draw_network(network, network_options, network_id, cur_node_id, cur_edg
             var node = node_objs.get(nodeId);
 
             if (node.on_path && node.next_nodes.length > 1) {
-                var plus_symb = document.createElement('div');
+                let plus_symb = document.createElement('div');
                 plus_m_symb.set(nodeId, plus_symb);
                 
                 const pos = n_network.getPositions([nodeId])[nodeId];
@@ -675,6 +675,7 @@ function draw_network(network, network_options, network_id, cur_node_id, cur_edg
                 const rect = n_network.body.container.getBoundingClientRect();
 
                 plus_symb.className = "plus-icon";
+                plus_symb.setAttribute("id", nodeId); // Ensuring each plus_m is assigned different id
                 plus_symb.classList.toggle("minus"); // Initially off
                 plus_symb.style.position = 'absolute';
                 plus_symb.style.left = `${canvasPos.x + 15}px`;

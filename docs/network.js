@@ -658,11 +658,14 @@ function draw_network(network, network_options, network_id, cur_node_id, cur_edg
     const NETWORK_BASE_HEIGHT = 85;
 
     containing_element.style.height = (NETWORK_BASE_HEIGHT * (network.max_level)) + "px";
-
-    if (is_first_network) { // Ensure first sequence has room from top of the page
-        containing_element.style.marginTop = "70px";
-        containing_element.style.marginBottom = '40px';
-    } else {
+    
+    const FIRST_MARGIN = 70;
+    if (compressed && is_first_network)
+    {
+        containing_element.style.marginTop = (FIRST_MARGIN + 7 * network.max_level) + 'px';
+    }
+    else 
+    {
         containing_element.style.marginTop = '70px';
     }
 
@@ -787,7 +790,7 @@ function draw_network(network, network_options, network_id, cur_node_id, cur_edg
         const pos = n_network.getPositions([nodeId])[nodeId];
         const canvasPos = n_network.canvasToDOM(pos);
         const rect = n_network.body.container.getBoundingClientRect();
-        const Y_OFFSET = compressed ? (15 * 1 / network.max_level) : 30
+        const Y_OFFSET = (y_offset / 2) + (5 - (5 * network.max_level)); // Network pos + small shift
 
         info_element.style.top = rect.top + window.scrollY - Y_OFFSET + "px";
         info_element.style.display = "block";

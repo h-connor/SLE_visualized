@@ -351,6 +351,7 @@
         var desc = true; 
         var compress = false;
         var contrasted_only = true;
+        var cluster = false;
 
 
         // Radio buttons: Sorting order
@@ -365,7 +366,7 @@
                 }
 
                 // Sort in ascend or descending order
-                build_network(sort_type, desc, compress, contrasted_only);
+                build_network(sort_type, desc, compress, contrasted_onlybuild_network);
             });
         });
 
@@ -379,19 +380,25 @@
             else if (value === "odds_ratio") sort_type = SORT_TYPE.ODDS;
             else if (value === "growth_rate") sort_type = SORT_TYPE.GROWTH;
 
-            build_network(sort_type, desc, compress, contrasted_only);
+            build_network(sort_type, desc, compress, contrasted_only, cluster);
+        });
+
+        // Check box for clustering
+        document.getElementById("clustering").addEventListener("change", function () {
+            cluster = this.checked;
+            build_network(sort_type, desc, compress, contrasted_only, cluster);
         });
 
         // Check box for compressed
         document.getElementById("compressing").addEventListener("change", function () {
             compress = this.checked;
-            build_network(sort_type, desc, compress, contrasted_only);
+            build_network(sort_type, desc, compress, contrasted_only, cluster);
         });
 
         // Check box for contrasted
         document.getElementById("contrasted-only").addEventListener("change", function () {
             contrasted_only = this.checked;
-            build_network(sort_type, desc, compress, contrasted_only);
+            build_network(sort_type, desc, compress, contrasted_only, cluster);
         });
         </script>
 

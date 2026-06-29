@@ -105,6 +105,33 @@ function sort_sequences(sequences, sort_method) {
     return n_sequences
 }
 
+function sort_by_cluster(sequences, override_clusts = false){
+    /* 
+        Returns clusters in the form [ [clust 1 -> seq1, seq2, seq2], [Clust 2, ...]]
+
+        sequences: The sequences to group
+        override_clusts: Assign everything in the same cluster if true
+    */
+
+    var clusters = new Map();
+    for (seq of sequences) {
+        if (override_clusts) {
+            if (!clusters.has(1))
+                clusters.set(1, []);
+
+            clusters.get(1).push(seq);
+        }
+        else {
+            if (!clusters.has(seq.cluster))
+                clusters.set(seq.cluster, [])
+
+            clusters.get(seq.cluster).push(seq)
+        }
+    }
+
+    return clusters;
+}
+
 function clear_net(){
 
     document.querySelectorAll("div.net").forEach(div => {
@@ -407,7 +434,7 @@ function find_earlier_paths(nodeIDA, nodeIDB, original_path) {
         Return the node that is not on the original path (else, the smallest value, else nodeA)
     */
 
-        // TODO: In progress
+        // TODO: In progress ? Can improve this
 
     // The nodes in the network
     // These nodes are the point of overlap
@@ -764,7 +791,7 @@ function draw_network(network, network_options, network_id, cur_node_id, cur_edg
     network_containers.push(containing_element)
 }
 
-export function build_network(sort_method, desc=true, compressed=false, contrasted_only=true) 
+export function build_network(sort_method, desc=true, compressed=false, contrasted_only=true, clustered=false) 
 {
     /*
         Core function.  Build the entire network. For each independant sequence create a canvas,
@@ -783,6 +810,7 @@ export function build_network(sort_method, desc=true, compressed=false, contrast
     var file_data = (contrasted_only) ? patterns_contrasted : patterns_all;
 
     var sequence_networks = build_objs(file_data, compressed);
+    console.log("Total networks: ", sequence_networks.length);
     sequence_networks = sort_sequences(sequence_networks, sort_method)
 
     if (!desc) sequence_networks.reverse();
@@ -874,8 +902,8 @@ async function load_data(contrasted_file, all_file) {
 }
 
 // const path1 = 
-const CONTRAST_FL = "./data/contrasted_final_results_CONTRAST_PREFIX.txt";
-const ALL_FL = "./data/contrasted_final_results_BH_PREFIX.txt";
+const CONTRAST_FL = "./data/clustered_contrasted_final_results_CONTRAST_PREFIX.txt";
+const ALL_FL = "./data/clustered_contrasted_final_results_BH_PREFIX.txt";
 
 await load_data(CONTRAST_FL, ALL_FL);
 build_network(SORT_TYPE.LENGTH);

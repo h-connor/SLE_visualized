@@ -116,11 +116,12 @@ class SequenceItemset {
 }
 
 export class Sequence {
-  constructor(itemsets, num_p, med_diag, init=true) {
+  constructor(itemsets, num_p, med_diag, cluster_num, init=true) {
     this.length = itemsets.length;
     this.itemsets = itemsets;
     this.num_patients = num_p;
     this.median_diag_dist = med_diag;
+    this.cluster = cluster_num;
 
     if (init) { // Re-calculate?
       this.odds_ratio = getRatiosForSeq(this);
@@ -185,7 +186,7 @@ export class Sequence {
   }
 
   Copy(){
-    var ret = new Sequence(this.itemsets, this.num_patients, this.median_diag_dist, false);
+    var ret = new Sequence(this.itemsets, this.num_patients, this.median_diag_dist, this.cluster_num, false);
     
     // Setup copied properties
     ret.odds_ratio = this.odds_ratio;
@@ -754,12 +755,12 @@ export function build_objs(pattern_raw, compress=false) {
         if (!line.trim()) 
             continue;
 
-        const [seq_str, med_dates_str, freq_str] = line.trim().split(PAT_SEP);
+        const [seq_str, med_dates_str, freq_str, cluster] = line.trim().split(PAT_SEP);
         
         const med_dates = get_med_dates_from_str(med_dates_str);
         const seq = get_seq_items_from_str(seq_str);
         const freq = get_freq_str(freq_str);
-        var res_s = new Sequence(seq, freq, med_dates)
+        var res_s = new Sequence(seq, freq, med_dates, cluster)
 
         if (! seqs.some(x => x.Equals(res_s))) // duplicate check
           seqs.push(res_s);

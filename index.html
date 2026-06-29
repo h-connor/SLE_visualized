@@ -68,6 +68,7 @@
         position: relative;
         width: 32px;
         height: 32px;
+        cursor: pointer;
       }
 
       .plus-icon::before,
@@ -92,6 +93,11 @@
           width: 4px;
           height: 24px;
       }
+
+      /* Minus state */
+      .plus-icon.minus::after {
+        display: none;
+     }
 
       .cluster {
         border solid 1 black;
@@ -306,7 +312,7 @@
 
         <label class="optionRow">
           <input type="checkbox" id="compressing">
-          <span>Enable compressing</span>
+          <span>Enable tree branches</span>
         </label>
 
         <label class="optionRow">

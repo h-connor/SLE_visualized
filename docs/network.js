@@ -8,6 +8,9 @@ const PLUS_NAME = "plus-sym";
 const RAW_NODE = "node-obj";
 const NODE_MARGINS = 3;
 const BORDER_WIDTH = 1;
+const NETWORK_Y_POS = 65;
+const NODE_HEIGHT = 65;
+const NODE_WIDTH = 70;
 
 var networks = [];
 var network_containers = [];
@@ -15,6 +18,7 @@ var node_to_seq = new Map();
 var node_objs = new Map();        // Plus symbol and other elements associated with nodes
                                   // In the form node -> map -> dom element ID
                                   // Currently Node -> { "plus-sym" : div }
+var plus_m_symb = new Map();
 
 // Creating insert
 Array.prototype.insert = function ( index, ...items ) {
@@ -115,6 +119,14 @@ function clear_net(){
     networks.length = 0
     network_containers.length = 0;
     node_to_seq = new Map();
+
+    // Remove the divs associated with nodes
+    for (var [_, p_div] of plus_m_symb)
+    {
+        p_div.remove();
+    }
+
+    plus_m_symb = new Map();
     node_objs = new Map();
 }
 
@@ -355,11 +367,9 @@ function draw_single_seq(seq, node_names, edges, label_text, itemset_window,
         edges.push(get_edge_properties(cur_node.node_id, prev_id, cur_node.node_id, itemset_window, seq.network_level != 1));
     }
 
-    // Creating custom elements of a node
-    const plus_symb = document.createElement('div');
+    // Tracking the node
     var node_map = new Map();
     node_map.set(RAW_NODE, cur_node);
-    node_map.set(PLUS_NAME, plus_symb);
     node_objs.set(cur_node.node_id, node_map);
 
     return node_prop[1]
@@ -505,9 +515,6 @@ function adjust_levels(visNetwork, network) {
                     var [earlier_node, nodeId] = find_earlier_paths(id1, id2, network.central_path);
                     [id1, id2].forEach(item => tracked_nodes.add(tracked_nodes)) // Don't shift either of them
 
-                    var nodeA = node_objs.get(id1).get(RAW_NODE);
-                    var nodeB = node_objs.get(id2).get(RAW_NODE);
-
                     var n_y = get_y_shift(earlier_node.value.network_level + 1);
                     highest_level = Math.max(highest_level, earlier_node.value.network_level + 1);
                     
@@ -548,8 +555,9 @@ function draw_multi_level_path(cur_node, node_names, edges, first_n=true, prev_x
 function draw_network(network, network_options, network_id, cur_node_id, cur_edge_id, 
     is_first_network, compressed=true) {
 
-    // Draw a given network
-    // Returns the node and edge ids after drawing
+    /*  Draw a given network
+        Returns the node and edge ids after drawing
+    */
 
     const graph_layer = document.getElementById("graph");
     const container = document.getElementById("network_body");
@@ -575,17 +583,19 @@ function draw_network(network, network_options, network_id, cur_node_id, cur_edg
     };
 
     const containing_element = document.createElement('div');
-    
+
     // Styling and setting up element attributes
     containing_element.className = 'net';
     containing_element.setAttribute('id', 'Network #' + network_id);
-    containing_element.style.height = (110 * (network.max_level)) + "px";
+    const NETWORK_BASE_HEIGHT = 85;
+
+    containing_element.style.height = (NETWORK_BASE_HEIGHT * (network.max_level)) + "px";
 
     if (is_first_network) { // Ensure first sequence has room from top of the page
-        containing_element.style.marginTop = "60px";
+        containing_element.style.marginTop = "70px";
         containing_element.style.marginBottom = '40px';
     } else {
-        containing_element.style.marginTop = '40px';
+        containing_element.style.marginTop = '70px';
     }
 
     container.appendChild(containing_element);
@@ -608,11 +618,29 @@ function draw_network(network, network_options, network_id, cur_node_id, cur_edg
         // resize if necessary
         if (network.max_level > prev_highest)
         {
-            containing_element.style.height = (130 * (network.max_level)) + "px";
+            containing_element.style.height = (NETWORK_BASE_HEIGHT * (network.max_level)) + "px";
 
             n_network.redraw();
-            n_network.fit();
         }
+    }
+
+    // Calculate network y position
+    if (compressed) {
+        const head_id = network.head.node_id;
+        const rootPos = n_network.getPositions([head_id])[head_id];
+        const COMPRESSED_OFFSET = 0.5 - ((network.max_level - 1) * 0.5);
+
+        const targetScreenY = NETWORK_BASE_HEIGHT * COMPRESSED_OFFSET; // 80% from top
+        
+        const targetCanvasY = n_network.DOMtoCanvas({
+            x: 0,
+            y: targetScreenY
+        }).y;
+
+        var y_offset = 2 * rootPos.y - targetCanvasY
+    }
+    else {
+        var y_offset = 65;
     }
 
     // After drawing, setup everything for each node
@@ -620,32 +648,47 @@ function draw_network(network, network_options, network_id, cur_node_id, cur_edg
         const nodes = n_network.body.data.nodes.getIds();
 
         for (let nodeId of nodes) {
-            const pos = n_network.getPositions([nodeId])[nodeId];
-            const canvasPos = n_network.canvasToDOM(pos);
-            const rect = n_network.body.container.getBoundingClientRect();
 
-            // TODO: Plus symbols on the nodes
-            // if (compressed) {
-                // var node_map = node_objs.get(nodeId);
-                // var plus_symb = node_objs.get(nodeId).get(PLUS_NAME);
-                // plus_symb.className = "plus-icon";
-                // plus_symb.style.position = 'absolute';
-                // plus_symb.style.left = `${canvasPos.x + 15}px`;
-                // plus_symb.style.top = `${rect.y + 20}px`;
-                // containing_element.appendChild(plus_symb);
-            // }
+            // Compressed? Add plus/minus options to the node
+            if (compressed) {
+
+                var node_map = node_objs.get(nodeId);
+                var node = node_map.get(RAW_NODE);
+
+                if (node.on_path && node.next_nodes.length > 1) {
+                    var plus_symb = document.createElement('div');
+                    plus_m_symb.set(nodeId, plus_symb);
+                    
+                    const pos = n_network.getPositions([nodeId])[nodeId];
+                    const canvasPos = n_network.canvasToDOM(pos);
+                    const rect = n_network.body.container.getBoundingClientRect();
+
+                    plus_symb.className = "plus-icon";
+                    plus_symb.style.position = 'absolute';
+                    plus_symb.style.left = `${canvasPos.x + 15}px`;
+                    plus_symb.style.top = `${rect.y + (NODE_HEIGHT * 0.9)}px`;
+                    containing_element.appendChild(plus_symb);
+
+                    plus_symb.addEventListener("mousedown", () => {
+                        console.log('clicked');
+                        plus_symb.classList.toggle("minus");
+                    });
+                }
+            }
         }
     });
+
 
     // Set initial network pos (same pos for all)
     n_network.moveTo({
         position: {
             x: 0,
-            y: 65
+            y: y_offset
         },
         scale: 1,
         animation: false
     });
+    n_network.redraw();
 
     // Sequence on-click info
     n_network.on("click", function (params) {
@@ -660,13 +703,13 @@ function draw_network(network, network_options, network_id, cur_node_id, cur_edg
 
         if (params.nodes.length === 0) return
 
-        const nodeId = params.nodes[0];
+        const nodeId = params.nodes[0]; 
 
         // Setting the position of the on-click event
         const pos = n_network.getPositions([nodeId])[nodeId];
         const canvasPos = n_network.canvasToDOM(pos);
         const rect = n_network.body.container.getBoundingClientRect();
-        const Y_OFFSET = compressed ? 0 : 25
+        const Y_OFFSET = compressed ? (15 * 1 / network.max_level) : 30
 
         info_element.style.top = rect.top + window.scrollY - Y_OFFSET + "px";
         info_element.style.display = "block";
@@ -710,6 +753,16 @@ function draw_network(network, network_options, network_id, cur_node_id, cur_edg
 
 export function build_network(sort_method, desc=true, compressed=false, contrasted_only=true) 
 {
+    /*
+        Core function.  Build the entire network. For each independant sequence create a canvas,
+            drawing each node on the canvas to represent the visualization of sequences.
+
+        sort_method: Order in which networks are shown
+        desc: Is this descending order of the sort method?
+        compressed: Are branches separate sequences or occurring on the same path?
+        conrasted_only: Using only contrastive sequences or all statistically significant sequences
+    */
+
     // Clear previous network (if any)
     clear_net();
 
@@ -739,8 +792,8 @@ export function build_network(sort_method, desc=true, compressed=false, contrast
             shape: 'box',
             margin: NODE_MARGINS,
             size:40,
-            widthConstraint: 70,
-            heightConstraint: 65,
+            widthConstraint: NODE_WIDTH,
+            heightConstraint: NODE_HEIGHT,
             font: {
                 size: 18,
                 multi: true
@@ -813,32 +866,3 @@ const ALL_FL = "./data/contrasted_final_results_BH_PREFIX.txt";
 
 await load_data(CONTRAST_FL, ALL_FL);
 build_network(SORT_TYPE.LENGTH);
-
-// const path1 = new URL("./data/_contrasted_final_results_CONTRAST_PREFIX.txt", window.location.href);
-// console.log(path1.href);
-// client.open('GET', path1, true);
-// client.onreadystatechange = function () {
-//   if (client.readyState === 4 && client.status === 200) {
-//     patterns_contrasted = client.responseText;
-//     tot_loaded_files++;
-
-//     if (tot_loaded_files == 2)
-//         build_network(SORT_TYPE.LENGTH);
-//   }
-// };
-// client.send();
-
-// var client2 = new XMLHttpRequest();
-// const path2 = new URL("./data/_contrasted_final_results_BH_PREFIX.txt", window.location.href);
-// client2.open('GET', path2, true);
-// client2.onreadystatechange = function () {
-//   if (client.readyState === 4 && client.status === 200) {
-//     patterns_all = client.responseText;
-//     tot_loaded_files++;
-
-//     if (tot_loaded_files == 2)
-//         build_network(SORT_TYPE.LENGTH);
-//   }
-// };
-// client2.send();
-

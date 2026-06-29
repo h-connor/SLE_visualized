@@ -121,17 +121,20 @@ function sort_by_cluster(sequences, override_clusts = false){
             if (!clusters.has(1))
                 clusters.set(1, []);
 
-            clusters.get(1).push(seq);
+            clusters.get(1).push(seq_network);
         }
         else {
             if (!clusters.has(seq.cluster))
                 clusters.set(seq.cluster, [])
 
-            clusters.get(seq.cluster).push(seq)
+            clusters.get(seq.cluster).push(seq_network)
         }
     }
 
-    return clusters;
+    // Return a list of the clusters sorted by key in the map
+    return [...clusters]
+            .sort((a, b) => a[0] - b[0])
+            .map(([key, value]) => value);
 }
 
 function clear_net(){
@@ -856,12 +859,12 @@ export function build_network(sort_method, desc=true, compressed=false, contrast
     }
 
     var first_n = true;
-    for (let cluster of clusters) {
+    for (var cluster of clusters) {
         sequence_networks = sort_sequences(cluster, sort_method)
 
         if (!desc) sequence_networks.reverse();
 
-        for(let seq_n of sequence_networks){
+        for(var seq_n of sequence_networks){
             draw_network(seq_n, network_options, network_id, node_id, edge_id, first_n, compressed);
             network_id++;
             first_n = false;

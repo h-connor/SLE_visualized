@@ -114,7 +114,9 @@ function sort_by_cluster(sequences, override_clusts = false){
     */
 
     var clusters = new Map();
-    for (seq of sequences) {
+    for (var seq_network of sequences) {
+        var seq = seq_network.central_seq;
+
         if (override_clusts) {
             if (!clusters.has(1))
                 clusters.set(1, []);
@@ -272,6 +274,33 @@ function get_y_shift(network_level) {
 
     const YPOS = YPOS_BASE_SHIFT + YPOS_SHIFT_AMT;
     return YPOS;
+}
+
+function get_network_properties() {
+    return {
+        layout: {
+            improvedLayout: false,
+            
+            hierarchical: {
+                enabled: false
+            },
+        },
+        physics: {
+            enabled: false
+        },
+        interaction: { dragNodes: false, dragView: false, zoomView: false },
+        nodes: {
+            shape: 'box',
+            margin: NODE_MARGINS,
+            size:40,
+            widthConstraint: NODE_WIDTH,
+            heightConstraint: NODE_HEIGHT,
+            font: {
+                size: 18,
+                multi: true
+            }
+        }
+    };
 }
 
 function get_node_properties(node_id, label_text, itemset_window, sequence_length, 
@@ -542,7 +571,7 @@ function adjust_levels(visNetwork, network) {
 
                 if (overlapping) {
                     // Determine which node to shift (The one that diverged earlier in the original path)
-                    var [earlier_node, nodeId] = find_earlier_paths(id1, id2, network.central_path);
+                    var [earlier_node, nodeId] = find_earlier_paths(id1, id2, network.central_seq);
                     [id1, id2].forEach(item => tracked_nodes.add(tracked_nodes)) // Don't shift either of them
 
                     var n_y = get_y_shift(earlier_node.value.network_level + 1);
@@ -806,49 +835,37 @@ export function build_network(sort_method, desc=true, compressed=false, contrast
     // Clear previous network (if any)
     clear_net();
 
+    // settings for the network
+    var network_options = get_network_properties();
+
     // Pyscript: Build the sequences
     var file_data = (contrasted_only) ? patterns_contrasted : patterns_all;
 
     var sequence_networks = build_objs(file_data, compressed);
     console.log("Total networks: ", sequence_networks.length);
-    sequence_networks = sort_sequences(sequence_networks, sort_method)
-
-    if (!desc) sequence_networks.reverse();
 
     var network_id = 0;
-
-    var network_options = {
-        layout: {
-            improvedLayout: false,
-            
-            hierarchical: {
-                enabled: false
-            },
-        },
-        physics: {
-            enabled: false
-        },
-        interaction: { dragNodes: false, dragView: false, zoomView: false },
-        nodes: {
-            shape: 'box',
-            margin: NODE_MARGINS,
-            size:40,
-            widthConstraint: NODE_WIDTH,
-            heightConstraint: NODE_HEIGHT,
-            font: {
-                size: 18,
-                multi: true
-            }
-        }
-    };
-
     var edge_id = [0];
     var node_id = [0];
+
+    // Assume everything is one cluster
+    var clusters = [sequence_networks]
+
+    if (clustered){
+        clusters = sort_by_cluster(sequence_networks);
+    }
+
     var first_n = true;
-    for(let seq_n of sequence_networks){
-       draw_network(seq_n, network_options, network_id, node_id, edge_id, first_n, compressed);
-       network_id++;
-       first_n = false;
+    for (let cluster of clusters) {
+        sequence_networks = sort_sequences(cluster, sort_method)
+
+        if (!desc) sequence_networks.reverse();
+
+        for(let seq_n of sequence_networks){
+            draw_network(seq_n, network_options, network_id, node_id, edge_id, first_n, compressed);
+            network_id++;
+            first_n = false;
+        }
     }
 }
 

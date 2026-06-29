@@ -105,7 +105,6 @@
 
       .net {
         width: 80vw;
-        border-right: 2px solid black;
         z-index: 1;
       }
 
@@ -294,6 +293,28 @@
         color: #aaa;
         pointer-events: none;
       }
+
+      .cluster {
+          border: 1px solid black;
+          border-right: none;
+          display: flex;
+          flex-direction: column;
+          width: fit-content;
+      }
+
+      .cluster-title {
+        position: relative;
+        top: 10px;
+        left: 12px;
+
+        font-size: 18px;
+        font-weight: 700;
+        color: #333;
+
+        background: white;
+        padding: 4px 10px;
+        border-radius: 6px;
+    }
     </style>
   </head>
 

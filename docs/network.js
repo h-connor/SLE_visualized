@@ -19,6 +19,7 @@ var node_objs = new Map();        // Plus symbol and other elements associated w
                                   // In the form node -> map -> dom element ID
                                   // Currently Node -> { "plus-sym" : div }
 var plus_m_symb = new Map();
+var clust_divs = []; // Divs for clusters
 
 // Creating insert
 Array.prototype.insert = function ( index, ...items ) {
@@ -147,9 +148,14 @@ function clear_net(){
         div.remove();
     });
 
+    document.querySelectorAll("div.cluster").forEach(div => {
+        div.remove();
+    });
+
     revealedNodes.clear();
     networks.length = 0
     network_containers.length = 0;
+    clust_divs.length = 0;
     node_to_seq = new Map();
 
     // Remove the divs associated with nodes
@@ -615,7 +621,7 @@ function draw_multi_level_path(cur_node, node_names, edges, first_n=true, prev_x
 }
 
 function draw_network(network, network_options, network_id, cur_node_id, cur_edge_id, 
-    is_first_network, compressed=true) {
+    is_first_network, cluster_div, compressed=true) {
 
     /*  Draw a given network
         Returns the node and edge ids after drawing
@@ -623,7 +629,7 @@ function draw_network(network, network_options, network_id, cur_node_id, cur_edg
 
     const graph_layer = document.getElementById("graph");
     const container = document.getElementById("network_body");
-    const panel_parent = document.getElementById("infoPanel");
+    container.appendChild(cluster_div);
 
     var node_names = [];
     var edges = [];
@@ -660,7 +666,7 @@ function draw_network(network, network_options, network_id, cur_node_id, cur_edg
         containing_element.style.marginTop = '70px';
     }
 
-    container.appendChild(containing_element);
+    cluster_div.appendChild(containing_element);
 
     // On-click info-element
     const info_element = document.createElement('div');
@@ -850,6 +856,7 @@ export function build_network(sort_method, desc=true, compressed=false, contrast
     var network_id = 0;
     var edge_id = [0];
     var node_id = [0];
+    var num_clusts = 1;
 
     // Assume everything is one cluster
     var clusters = [sequence_networks]
@@ -860,15 +867,36 @@ export function build_network(sort_method, desc=true, compressed=false, contrast
 
     var first_n = true;
     for (var cluster of clusters) {
-        sequence_networks = sort_sequences(cluster, sort_method)
+        let cluster_div = document.createElement('div');
+        cluster_div.className = "cluster";
+        cluster_div.setAttribute("id", "cluster#: " + num_clusts);
+
+        if (!clustered)
+        {
+            // Make the clusters border invisible
+            cluster_div.style.border = "none";
+        }
+        else {
+            // Multiple potential "real" clusters.
+            // Title for the cluster to show the user which one is which.
+            let title = document.createElement("div");
+            title.textContent = "Cluster = " + num_clusts;
+            title.className = "cluster-title";
+            cluster_div.appendChild(title);
+        }
+
+        clust_divs.push(cluster_div);
+        sequence_networks = sort_sequences(cluster, sort_method);
 
         if (!desc) sequence_networks.reverse();
 
         for(var seq_n of sequence_networks){
-            draw_network(seq_n, network_options, network_id, node_id, edge_id, first_n, compressed);
+            draw_network(seq_n, network_options, network_id, node_id, edge_id, first_n, cluster_div, compressed);
             network_id++;
             first_n = false;
         }
+
+        num_clusts += 1;
     }
 }
 

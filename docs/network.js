@@ -177,8 +177,14 @@ function getFutureNodes(startNode, network) {
             // only follow outgoing edges
             if (edge.from === nodeId) {
                 if (!visited.has(edge.to)) {
-                    visited.add(edge.to);
-                    traverse(edge.to);
+                    
+                    // Only consider the node as visited if it is not on the main path
+                    if (!node_objs.get(edge.to).on_path) {
+                        visited.add(edge.to);
+                        traverse(edge.to);
+                    } else {
+                        // Do not traverse main path
+                    }
                 }
             }
         }

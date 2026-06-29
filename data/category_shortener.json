@@ -1,6 +1,7 @@
 {
     "Joint disorders": "Joints",
     "Upp respiratory infection": "Uppr infection",
+    "Other upper respiratory disease" : "Uppr respiratory disease",
     "Other msk": "MSK",
     "All Skin disorders": "Skin disorder",
     "Viral infection": "Viral",
@@ -15,5 +16,19 @@
     "Systemic lupus erythematosus and connective tissue disorders" : "SLE & connective tissue",
     "Cancer of bone and connective tissue" : "Bone/connective tissue cancer",
     "Peri-; endo-; and myocarditis; cardiomyopathy ;except that caused by tuberculosis or STD" : "Cardiomyopathy",
-    "Other complications of pregnancy & Other complications of birth; puerperium affecting management of mother" : "birth complications; puerperium"
+    "Other complications of pregnancy & Other complications of birth; puerperium affecting management of mother" : "birth complications; puerperium",
+    "Abdominal pain and other digestive/abdomen signs and symptoms" : "Abdominal/digestive symptoms",
+    "Bacterial infection; unspecified site & Viral Infection" : "Bacterial & Viral Infection",
+    "E Codes; Adverse effects of medical care" : "Adverse effects of care",
+    "Diseases of mouth; excluding dental" : "Diseases of mouth",
+    "Chronic kidney disease and related conditions" : "Kidney disease / related",
+    "Contraceptive and procreative management" : "Contraceptive / procreative",
+    "Other circulatory disease" : "Circulatory disease",
+    "Other general signs and symptoms" : "General signs/symptoms",
+    "Other nutritional; endocrine; immunity; and metabolic disorders" : "Metabolic/related disorder",
+    "Other pregnancy and delivery including normal" : "pregnancy delivery",
+    "OB-related trauma to perineum and vulva" : "OB perineal/vulvar trauma",
+    "Alcohol and substance-use disorders" : "Substance-use disorder",
+    "\"Attention-deficit; conduct; and disruptive behavior disorders\"" : "Disruptive behavior disorder",
+    "Other specified connective tissue disease" : "Connective tissue disease"
 }

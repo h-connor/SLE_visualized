@@ -65,10 +65,13 @@
       }
 
       .plus-icon {
-        position: relative;
-        width: 32px;
-        height: 32px;
+        position: absolute;
         cursor: pointer;
+
+        --horizontal-width: 24px;
+        --horizontal-height: 4px;
+        --vertical-width: 4px;
+        --vertical-height: 24px;
       }
 
       .plus-icon::before,
@@ -84,14 +87,14 @@
 
       /* Horizontal bar */
       .plus-icon::before {
-          width: 24px;
-          height: 4px;
+        width: var(--horizontal-width);
+        height: var(--horizontal-height);
       }
 
       /* Vertical bar */
       .plus-icon::after {
-          width: 4px;
-          height: 24px;
+        width: var(--vertical-width);
+        height: var(--vertical-height);
       }
 
       /* Minus state */
@@ -106,6 +109,7 @@
       .net {
         width: 80vw;
         z-index: 1;
+        position: relative;
       }
 
       .patInfo {

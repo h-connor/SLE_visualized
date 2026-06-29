@@ -9,8 +9,11 @@ const RAW_NODE = "node-obj";
 const NODE_MARGINS = 3;
 const BORDER_WIDTH = 1;
 const NETWORK_Y_POS = 65;
-const NODE_HEIGHT = 65;
-const NODE_WIDTH = 70;
+const NODE_DEF_SIZE = 40;
+const NODE_HEIGHT_MAX = 65;
+const NODE_WIDTH_MAX = 70;
+const PLUS_M_BASE_SIZE = 22;
+const PLUS_M_DEPTH = 4;
 
 var networks = [];
 var network_containers = [];
@@ -301,9 +304,9 @@ function get_network_properties() {
         nodes: {
             shape: 'box',
             margin: NODE_MARGINS,
-            size:40,
-            widthConstraint: NODE_WIDTH,
-            heightConstraint: NODE_HEIGHT,
+            size: NODE_DEF_SIZE,
+            widthConstraint: NODE_WIDTH_MAX,
+            heightConstraint: NODE_HEIGHT_MAX,
             font: {
                 size: 18,
                 multi: true
@@ -620,6 +623,43 @@ function draw_multi_level_path(cur_node, node_names, edges, first_n=true, prev_x
     }
 }
 
+function updateAttachedInfoPos(nodeId, plus_symb, visNetwork, network_offset) {
+    /*
+        Update the position and sizes of the info attached to a node
+    */
+    var node_test_obj = node_objs.get(nodeId);
+    console.log(node_test_obj.primary_seq);
+
+    // Node info
+    var node = visNetwork.body.nodes[nodeId];
+    var node_box = visNetwork.getBoundingBox(nodeId);
+    var node_width = node.shape.width;
+    var node_height = node.shape.height;
+
+    var scale = visNetwork.getScale();
+    var screenWidth = node_width * scale;
+    var screenHeight = node_height * scale;
+
+    // Get edges of the node for proper positioning
+    var bottomRight = visNetwork.canvasToDOM({
+        x: node_box.right,
+        y: node_box.bottom
+    });
+
+    var new_size = PLUS_M_BASE_SIZE / ((NODE_WIDTH_MAX / screenWidth));
+    var new_depth = PLUS_M_DEPTH / ((NODE_WIDTH_MAX / screenWidth));
+    
+    // Adjust position and sizes
+    plus_symb.style.left = `${bottomRight.x - (node_width * 0.3 - NODE_MARGINS)}px`;
+    plus_symb.style.top = `${bottomRight.y - (node_height * 0.3 - NODE_MARGINS)}px`;
+
+    plus_symb.style.setProperty("--horizontal-width", `${new_size}px`);
+    plus_symb.style.setProperty("--horizontal-height", `${new_depth}px`);
+
+    plus_symb.style.setProperty("--vertical-width", `${new_depth}px`);
+    plus_symb.style.setProperty("--vertical-height", `${new_size}px`);
+}
+
 function draw_network(network, network_options, network_id, cur_node_id, cur_edge_id, 
     is_first_network, cluster_div, compressed=true) {
 
@@ -699,9 +739,9 @@ function draw_network(network, network_options, network_id, cur_node_id, cur_edg
     if (compressed) {
         const head_id = network.head.node_id;
         const rootPos = n_network.getPositions([head_id])[head_id];
-        const COMPRESSED_OFFSET = 0.5 - ((network.max_level - 1) * 0.5);
+        var compressed_offset = 0.5 - ((network.max_level - 1) * 0.5);
 
-        const targetScreenY = NETWORK_BASE_HEIGHT * COMPRESSED_OFFSET; // 80% from top
+        const targetScreenY = NETWORK_BASE_HEIGHT * compressed_offset;
         
         const targetCanvasY = n_network.DOMtoCanvas({
             x: 0,
@@ -712,6 +752,7 @@ function draw_network(network, network_options, network_id, cur_node_id, cur_edg
     }
     else {
         var y_offset = 65;
+        var compressed_offset = 0;
     }
 
     // Set initial network pos (same pos for all)
@@ -732,24 +773,19 @@ function draw_network(network, network_options, network_id, cur_node_id, cur_edg
         // Compressed? Add plus/minus options to the node
         if (compressed) {
 
-            var node = node_objs.get(nodeId);
+            let node = node_objs.get(nodeId);
 
             if (node.on_path && node.next_nodes.length > 1) {
                 let plus_symb = document.createElement('div');
-                plus_m_symb.set(nodeId, plus_symb);
                 
-                const pos = n_network.getPositions([nodeId])[nodeId];
-                const canvasPos = n_network.canvasToDOM(pos);
-                const rect = n_network.body.container.getBoundingClientRect();
-
                 plus_symb.className = "plus-icon";
                 plus_symb.setAttribute("id", nodeId); // Ensuring each plus_m is assigned different id
+                plus_m_symb.set(nodeId, plus_symb);
                 plus_symb.classList.toggle("minus"); // Initially off
                 plus_symb.style.position = 'absolute';
-                plus_symb.style.left = `${canvasPos.x + 15}px`;
-                plus_symb.style.top = `${rect.y + (NODE_HEIGHT * 0.9)}px`;
                 containing_element.appendChild(plus_symb);
 
+                // Button click on plus/minus symbol
                 plus_symb.addEventListener("mousedown", (event) => {
                     event.stopPropagation(); // Prevent node click (below this element)
 
@@ -763,13 +799,27 @@ function draw_network(network, network_options, network_id, cur_node_id, cur_edg
                     else
                     {
                         expandNode(nodeId, n_network);
-                    }
+                    } 
 
                     plus_symb.classList.toggle("minus"); // Apply next toggle
                 });
             }
         }
     }
+
+    // Setup re-draw of plus_minus symbols if the network itself has to redraw
+    n_network.on("afterDrawing", function () {
+        let net_node_ids = n_network.body.data.nodes.getIds();
+
+        // For each node, re-size its plus symb
+        for (const node_id of net_node_ids)
+        {
+            if (plus_m_symb.has(node_id))
+            {
+                updateAttachedInfoPos(node_id, plus_m_symb.get(node_id), this, compressed_offset);
+            }
+        }
+    });
 
     // Sequence on-click info
     n_network.on("click", function (params) {

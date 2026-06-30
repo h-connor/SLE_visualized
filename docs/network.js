@@ -1,11 +1,7 @@
-import { build_objs, windowToTimelineMonths, load_pattern_data } from "./patterns.js";
-import { TOT_SLE, TOT_CONTROLS } from "./metrics.js";
+import { build_objs, windowToTimelineMonths, load_pattern_data, MIN_ALLOWED_SUP } from "./patterns.js";
+import { TOT_SLE, TOT_CONTROLS, getGR } from "./metrics.js";
 const revealedNodes = new Set(); // Nodes set to visible / clicked on
 var clickedInsideNetwork = false;
-
-// Minimum support allowed before problems arise
-// TODO: Need to differentiate between < 6 and == 6 (I currently do not)
-const MIN_ALLOWED_SUP = 6;
 
 // Constants for access in node_objs map
 const PLUS_NAME = "plus-sym";
@@ -342,7 +338,12 @@ function get_node_properties(node_id, label_text, itemset_window, sequence_lengt
     else
         var n_xpos = prev_x + edge_shift + DEF_NEXT_ITEMSET_DIST;
     
-    const gr_color = valueToColor(subset_seq.growth_rate);
+    // Assume growth rate of 1 instead if we have a privacy restriction (base case)
+    var gr_to_use = (subset_seq.num_patients[1] <= MIN_ALLOWED_SUP + 1) 
+                    ? getGR(subset_seq, subset_seq.num_patients[0], 1)
+                    : subset_seq.growth_rate;
+
+    const gr_color = valueToColor(gr_to_use);
     
     return  [{   // Properties of a node 
         id: node_id, label: label_text,
@@ -856,8 +857,21 @@ function draw_network(network, network_options, network_id, cur_node_id, cur_edg
         
         // Show pattern info
         const slePct = (ref_seq.num_patients[0] / TOT_SLE * 100).toFixed(1);
-        const controlPct = (ref_seq.num_patients[1] / TOT_CONTROLS * 100).toFixed(1);
-        const odds_to_str = ref_seq.odds_ratio[1] + ' (' + ref_seq.odds_ratio[0] + ' - ' + ref_seq.odds_ratio[2] + ')';
+        let controlPct = (ref_seq.num_patients[1] / TOT_CONTROLS * 100).toFixed(1);
+
+        if (ref_seq.num_patients[1] == MIN_ALLOWED_SUP)
+        {
+            // Signify it is an approximate
+            controlPct = '~' + controlPct;
+            var odds_to_str = 'LB-UP (' + ref_seq.odds_ratio_range[0][0] + ' - ' + ref_seq.odds_ratio_range[1][2] + ')';
+        }
+        else {
+            var odds_to_str = ref_seq.odds_ratio[1] + ' (' + ref_seq.odds_ratio[0] + ' - ' + ref_seq.odds_ratio[2] + ')';
+        }
+
+        // Show incorrectness to the user, due to privacy
+        var num_controls = ref_seq.num_patients[1] > MIN_ALLOWED_SUP ?  ref_seq.num_patients[1] : '~' + ref_seq.num_patients[1]
+
         info_element.innerHTML = `
             <div class="network-stats">
                <div class="selected seq">
@@ -875,7 +889,7 @@ function draw_network(network, network_options, network_id, cur_node_id, cur_edg
                 </div>
 
                 <div class="group right sup">
-                    <strong>${ref_seq.num_patients[1]}</strong>
+                    <strong>${num_controls}</strong>
                     <span>(${controlPct}%)</span>
                     <label>CONTROLS</label>
                 </div>

@@ -33,13 +33,13 @@ function getRatio(a, b, c, d) {
     return odds_in_exposed_group / odds_in_not_exposed_group
 }
 
-export function getRatiosForSeq(sequence) {
+export function getRatiosForSeq(sequence, case_patients_override = -1, control_patients_override = -1) {
     // Returns the ratios in the form [lower 95% CI, ratio, upper 95% CI]
 
     // Calculates the odds ratio
-    const a = sequence.num_patients[0];
+    const a = (case_patients_override == -1) ? sequence.num_patients[0] : case_patients_override;
     const b = TOT_SLE
-    const c = sequence.num_patients[1];
+    const c = (control_patients_override == -1) ? sequence.num_patients[1] : control_patients_override;
     const d = TOT_CONTROLS
 
     var ratio = getRatio(a, b, c, d);
@@ -50,6 +50,10 @@ export function getRatiosForSeq(sequence) {
     return [lower, ratio, upper]
 }
 
-export function getGR(sequence) {
-    return ((sequence.num_patients[0] / TOT_SLE) / (sequence.num_patients[1] / TOT_CONTROLS)).toFixed(2)
+export function getGR(sequence, case_patients_override = -1, control_patients_override = -1) {
+
+    var cases = (case_patients_override == -1) ? sequence.num_patients[0] / TOT_SLE : case_patients_override / TOT_SLE;
+    var controls = (control_patients_override == -1) ? sequence.num_patients[1] / TOT_CONTROLS : control_patients_override / TOT_CONTROLS;
+
+    return (cases / controls).toFixed(2)
 }

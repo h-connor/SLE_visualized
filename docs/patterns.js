@@ -8,6 +8,15 @@ import { getRatiosForSeq, getGR } from "./metrics.js";
 const CAT_SHORT = './data/category_shortener.json'
 var category_shortener;
 
+// Minimum support allowed before problems arise
+// TODO: Need to differentiate between < 6 and == 6 (I currently do not)
+export const MIN_ALLOWED_SUP = 6; 
+
+
+// TODO / FIXME
+// Currently I say anything with controls 6 or 7 will be higher than the previous.
+// This is true, however, I need to limited it to 6 not 7, and differentiate between less than 6 or equal to 6.
+
 export async function load_pattern_data() {
     const response = await fetch(CAT_SHORT);
 
@@ -125,9 +134,18 @@ export class Sequence {
 
     if (init) { // Re-calculate?
       this.odds_ratio = getRatiosForSeq(this);
+      this.odds_ratio_range = [-1, this.odds_ratio];
+
+      // If we hit the minimum privacy limit, get a lower-bound on the odds ratio
+      if (this.num_patients[1] == MIN_ALLOWED_SUP)
+      {
+        this.odds_ratio_range[0] = getRatiosForSeq(this, this.num_patients[0], 1);
+      }
+
       this.growth_rate = getGR(this);
     }
     else {
+      this.odds_ratio_range = null;
       this.odds_ratio = null;
       this.growth_rate = null;
     }
@@ -197,6 +215,7 @@ export class Sequence {
     ret.first_subset_link = this.first_subset_link;
     ret.is_contrastive = this.is_contrastive;
     ret.network_level = this.network_level;
+    ret.odds_ratio_range = this.odds_ratio_range;
 
     return ret;
   }

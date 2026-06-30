@@ -186,7 +186,7 @@ export class Sequence {
   }
 
   Copy(){
-    var ret = new Sequence(this.itemsets, this.num_patients, this.median_diag_dist, this.cluster_num, false);
+    var ret = new Sequence(this.itemsets, this.num_patients, this.median_diag_dist, this.cluster, false);
     
     // Setup copied properties
     ret.odds_ratio = this.odds_ratio;

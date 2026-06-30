@@ -1,3 +1,5 @@
+// TODO: Branches + clustering appears broken into one cluster
+
 import { build_objs, windowToTimelineMonths, load_pattern_data } from "./patterns.js";
 import { TOT_SLE, TOT_CONTROLS } from "./metrics.js";
 const revealedNodes = new Set(); // Nodes set to visible / clicked on

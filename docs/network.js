@@ -1,9 +1,11 @@
-// TODO: Branches + clustering appears broken into one cluster
-
 import { build_objs, windowToTimelineMonths, load_pattern_data } from "./patterns.js";
 import { TOT_SLE, TOT_CONTROLS } from "./metrics.js";
 const revealedNodes = new Set(); // Nodes set to visible / clicked on
 var clickedInsideNetwork = false;
+
+// Minimum support allowed before problems arise
+// TODO: Need to differentiate between < 6 and == 6 (I currently do not)
+const MIN_ALLOWED_SUP = 6;
 
 // Constants for access in node_objs map
 const PLUS_NAME = "plus-sym";

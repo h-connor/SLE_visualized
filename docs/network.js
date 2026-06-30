@@ -842,7 +842,10 @@ function draw_network(network, network_options, network_id, cur_node_id, cur_edg
         const pos = n_network.getPositions([nodeId])[nodeId];
         const canvasPos = n_network.canvasToDOM(pos);
         const rect = n_network.body.container.getBoundingClientRect();
-        const Y_OFFSET = (y_offset / 2) + (5 - (5 * network.max_level)); // Network pos + small shift
+
+        const Y_OFFSET = (compressed && network.max_level > 1) ? 
+                        ((y_offset / 2) + (5 - (5 * network.max_level))):  // Network pos + small shift
+                        (y_offset / 2 + 7); // Straight line anyway
 
         info_element.style.top = rect.top + window.scrollY - Y_OFFSET + "px";
         info_element.style.display = "block";

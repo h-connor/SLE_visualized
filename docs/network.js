@@ -171,11 +171,21 @@ function clear_net(){
     node_objs = new Map();
 }
 
+// Retrieve CCS variable vlaue
+function getRGBVariable(name) {
+    return getComputedStyle(document.documentElement)
+        .getPropertyValue(name)
+        .trim()
+        .split(",")
+        .map(x => Number(x.trim()));
+}
+
 const COLORS = {
-    low:  [173, 216, 230], // 1 = light blue
-    mid:  [0, 102, 114],   // 2 = blue
-    good: [0, 180, 75],    // 3 = green
-    high: [220, 50, 50]    // >3 = red
+    lowest: getRGBVariable("--color-lowest"),
+    low: getRGBVariable("--color-low"),
+    med: getRGBVariable("--color-med"),
+    high: getRGBVariable("--color-high"),
+    highest: getRGBVariable("--color-highest")
 };
 
 function lerp(a, b, t) {
@@ -192,18 +202,22 @@ function lerpColor(c1, c2, t) {
     })`;
 }
 
-function valueToColor(value) {
-    if (value <= 2) {
-        return lerpColor(COLORS.low, COLORS.mid, value - 1);
+function valueToColor(growth_rate) {
+    if (growth_rate <= 2) {
+        return lerpColor(COLORS.lowest, COLORS.low, growth_rate - 1);
     }
 
-    if (value <= 3) {
-        return lerpColor(COLORS.mid, COLORS.good, value - 2);
+    if (growth_rate <= 3) {
+        return lerpColor(COLORS.low, COLORS.med, growth_rate - 2);
+    }
+
+    if (growth_rate <= 4) {
+        return lerpColor(COLORS.med, COLORS.high, growth_rate - 3);
     }
 
     // Saturates at 6
-    const t = Math.min(1, (value - 3) / 3);
-    return lerpColor(COLORS.good, COLORS.high, t);
+    const t = Math.min(1, growth_rate - 4);
+    return lerpColor(COLORS.high, COLORS.highest, t);
 }
 
 function getFutureNodes(startNode, network) {

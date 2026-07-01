@@ -14,6 +14,14 @@
     <!-- Styles -->
     <style type="text/css">
     
+      :root { /* Core document vars */
+        --color-lowest: 173,216,230;
+        --color-low: 0,102,114;
+        --color-med: 0,180,75;
+        --color-high: 255,170,0;
+        --color-highest:224, 42, 42;
+      }
+
       #network_body {
         width: 80vw;
         height: 100vh;
@@ -34,12 +42,12 @@
       #color-scheme {
         width: 30px;
         height: 300px;
-        background: linear-gradient(
-            to top,
-            rgb(173,216,230) 0%,
-            rgb(0,102,114) 33%,
-            rgb(0,180,75) 66%,
-            rgb(220,50,50) 100%
+        background: linear-gradient( to top,
+          rgb(var(--color-lowest)) 0%,
+          rgb(var(--color-low)) 33%,
+          rgb(var(--color-med)) 66%,
+          rgb(var(--color-high)) 83%,
+          rgb(var(--color-highest)) 100%
         );
         z-index:1;
       }
@@ -365,7 +373,7 @@
 
         <div class="menuSection">
           <div class="sectionLabel">Sort Method</div>
-            <select id="sortMethod" class="dropdown">
+            <select id="sortMethod" class="dropdown" autocomplete="off">
               <option value="length" selected>Length / Default</option>
               <option value="frequency">SLE Frequency</option>
               <option value="odds_ratio">Odds Ratio</option>

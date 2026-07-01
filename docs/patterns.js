@@ -552,9 +552,9 @@ class SequenceNetwork {
 
   static num_networks = 0;
 
-  constructor(seq) {
+  constructor(seq, core_seq) {
     this.head = new NetworkNode(seq, true);
-    this.central_seq = seq;
+    this.central_seq = core_seq;
     this.max_level = 1;
 
     this.network_id = SequenceNetwork.num_networks;
@@ -647,7 +647,7 @@ function longer_node_network(cur_sequences, current_sets_in_common, all_networks
       var [key, value] = key_p;
 
       var init_node_seq = value.get_subset_by_seq_indx(current_sets_in_common - 1).Copy()
-      var n_network = new SequenceNetwork(init_node_seq)
+      var n_network = new SequenceNetwork(init_node_seq, value)
       all_networks.push(n_network);
 
       // Add the sequence to the central path
@@ -679,7 +679,7 @@ function longer_node_network(cur_sequences, current_sets_in_common, all_networks
     if (current_network === null) { // First case: Get the sequence of the first itemset
       var n_path = get_primary_path(common_seqs);
       n_path.network_level = network_level;
-      var next_network = new SequenceNetwork(n_path.get_subset_by_seq_indx(0).Copy());
+      var next_network = new SequenceNetwork(n_path.get_subset_by_seq_indx(0).Copy(), n_path);
       var n_node = next_network.head;
       all_networks.push(next_network);
     
@@ -794,7 +794,7 @@ export function build_objs(pattern_raw, compress=false) {
       // Nothing to compress, use the raw sequences instead
       var n_res = []
       for (var seq of maximal_seqs)
-        n_res.push(new SequenceNetwork(seq));
+        n_res.push(new SequenceNetwork(seq, seq));
       res = n_res;
     }
 
